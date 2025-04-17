@@ -91,8 +91,7 @@ class ES:
 
     def generate_mutated_offspring(self, population_size):
         # TODO
-        population = ...
-
+        population = np.tile(mean_vector, (population_size, 1))
         # Compute multivariate Gaussian noise
         mutation = ...
 

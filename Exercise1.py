@@ -1,4 +1,4 @@
-from src.EA.CMAES import CMAES, CMAES_opts
+from src.EA.CMAES_sol import CMAES, CMAES_opts
 from src.world.robot.controllers import MLP
 from src.utils.Filesys import get_project_root
 from src.world.World import World
@@ -39,7 +39,7 @@ class CheetahWorld(World):
         state_space = self.env.observation_space.shape[0]  # https://gymnasium.farama.org/environments/mujoco/half_cheetah/#observation-space
         self.controller = MLP.NNController(state_space, action_space)
         self.dt = self.env.get_wrapper_attr('dt')
-        self.n_params = ...  # TODO
+        self.n_params = 391  # TODO
 
     def geno2pheno(self, genotype):
         self.controller.geno2pheno(genotype)
@@ -99,11 +99,11 @@ def main():
     n_parameters = world.n_params
 
     # TODO: improve the ES settings
-    CMAES_opts["min"] = -10
-    CMAES_opts["max"] = 10
+    CMAES_opts["min"] = -5
+    CMAES_opts["max"] = 5
     CMAES_opts["num_parents"] = 100
     CMAES_opts["num_generations"] = 100
-    CMAES_opts["mutation_sigma"] = 2.5
+    CMAES_opts["mutation_sigma"] = 3
 
     population_size = 50
 
@@ -123,7 +123,7 @@ def main():
     ppo = PPO("MlpPolicy", env, device=torch.device('cpu'))
     trial_time = 50  # seconds in simulation
     n_sim_steps = int(trial_time / world.dt)
-    n_total_steps = ...  # TODO
+    n_total_steps = 20  # TODO
     ppo.learn(total_timesteps=n_total_steps)
     ppo_controller = PPO_controller(ppo)
 
@@ -138,7 +138,7 @@ def main():
     # Make video
     generate_best_individual_video(ppo_controller, 'PPO_best.mp4')
 
-    print(np.sum(rewards_list))
+    print('sum reward :', np.sum(rewards_list))
     env.close()
 
 
