@@ -77,7 +77,8 @@ class CMAES():
         self.current_gen += 1
 
     def initialise_x0(self, num_parameters):
-        mean_vector = np.random.uniform(low=self.min, high=self.max, size=num_parameters)
+        #mean_vector = np.random.uniform(low=self.min, high=self.max, size=num_parameters)
+        mean_vector = np.random.normal(loc=0, scale=1, size=num_parameters)
         return mean_vector
 
 
