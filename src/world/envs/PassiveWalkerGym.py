@@ -159,15 +159,15 @@ class PassiveWalkerEnv(MujocoEnv, utils.EzPickle):
         qacc = self.data.qacc
         if np.any(np.isnan(qacc)) or np.any(np.isinf(qacc)) or np.any(np.abs(qacc) > 1e6):
             DOF = np.argwhere((np.isnan(qacc)) + (np.isinf(qacc)) + (np.abs(qacc) > 1e6)).squeeze()
-            print(ValueError(f'MuJoCo Warning: Nan, Inf or huge value in QACC at DOF {DOF}'))
+            #print(ValueError(f'MuJoCo Warning: Nan, Inf or huge value in QACC at DOF {DOF}'))
             terminated = True
         if self.data.qpos[2] < self.init_z_offset + 0.25 - self.data.qpos[0]*np.tan(5*np.pi/180):
-            print(f"Walker Fell off the platform at {self.data.qpos[0]} meter!!")
+            #print(f"Walker Fell off the platform at {self.data.qpos[0]} meter!!")
             terminated = True
         if np.abs(self.data.qpos[0] - self.previous_state[0])<1e-4:
             self.stuck += 1
             if self.stuck > 10/self.dt:
-                print(f"Walker not moving for 10 seconds!!")
+                #print(f"Walker not moving for 10 seconds!!")
                 terminated = True
         else:
             self.stuck = 0

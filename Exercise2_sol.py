@@ -103,6 +103,7 @@ class PassiveWalkerWorld(World):
 
 def run_EA(ea, world):
     for gen in range(ea.n_gen):
+        print(f"Generation {gen}")
         pop = ea.ask()
         fitnesses_gen = np.empty(ea.n_pop)
         for index, genotype in enumerate(pop):
