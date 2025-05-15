@@ -1,4 +1,4 @@
-from src.EA.CMAES import CMAES, CMAES_opts
+from src.EA.CMAES_sol import CMAES_sol, CMAES_opts
 from src.EA.NSGA import NSGAII, NSGA_opts
 from src.world.World import World
 from src.world.robot.controllers import MLP
@@ -170,6 +170,7 @@ class AntWorld(World):
 
 def run_EA_single(ea_single, world):
     for gen in range(ea_single.n_gen):
+        print(f"Generation {gen}")
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
@@ -254,7 +255,7 @@ def main():
     population_size = 250
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
-    CMAES_opts["num_parents"] = 100
+    CMAES_opts["num_parents"] = 20
     CMAES_opts["num_generations"] = 100
     CMAES_opts["mutation_sigma"] = 0.33
 
@@ -272,7 +273,7 @@ def main():
     NSGA_opts["min"] = -1
     NSGA_opts["max"] = 1
     NSGA_opts["num_parents"] = population_size
-    NSGA_opts["num_generations"] = 100
+    NSGA_opts["num_generations"] = 20
     NSGA_opts["mutation_prob"] = 0.3
     NSGA_opts["crossover_prob"] = 0.5
 
