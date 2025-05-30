@@ -21,6 +21,55 @@ import os
 ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
 
+def generate_ant_world_with_obstacles(n_obstacles=30, area_radius=10, min_size=0.2, max_size=1):
+    from xml.etree.ElementTree import Element, SubElement, ElementTree
+    import random
+
+    output_path = os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml")
+
+    mjcf = Element("mujoco", model="tensegrity default scene")
+    SubElement(mjcf, "compiler", angle="degree", coordinate="local", inertiafromgeom="true", autolimits="true")
+    SubElement(mjcf, "option", integrator="RK4", timestep="0.01", gravity="0 0 -9.81")
+    SubElement(mjcf, "statistic", center="0 0 .3", extent="1.2")
+
+    # Assets
+    asset = SubElement(mjcf, "asset")
+    SubElement(asset, "texture", builtin="gradient", height="100", width="100",
+               rgb1="1 1 1", rgb2="0 0 0", type="skybox")
+    SubElement(asset, "texture", builtin="flat", height="1278", width="127", name="texgeom",
+               mark="cross", markrgb="1 1 1", random="0.01", rgb1="0.8 0.6 0.4", rgb2="0.8 0.6 0.4", type="cube")
+    SubElement(asset, "texture", builtin="checker", height="100", width="100", name="texplane",
+               rgb1="0 0 0", rgb2="0.8 0.8 0.8", type="2d")
+    SubElement(asset, "material", name="MatPlane", reflectance="0.5", shininess="1", specular="1",
+               texrepeat="60 60", texture="texplane")
+    SubElement(asset, "material", name="geom", texture="texgeom", texuniform="true")
+    SubElement(asset, "material", name="rock", rgba="0.4 0.3 0.2 1")
+
+    # Worldbody
+    worldbody = SubElement(mjcf, "worldbody")
+    SubElement(worldbody, "light", cutoff="100", diffuse="1 1 1", dir="-0 0 -1.3", directional="true",
+               exponent="1", pos="0 0 1.3", specular=".1 .1 .1")
+    SubElement(worldbody, "geom", conaffinity="1", condim="3", material="MatPlane", name="floor",
+               pos="0 0 0", rgba="0.8 0.9 0.8 1", size="40 40 40", type="plane")
+
+    # Obstacles aléatoires
+    for _ in range(n_obstacles):
+        sx = round(random.uniform(min_size, max_size), 3)
+        sy = round(random.uniform(min_size, max_size), 3)
+        sz = round(random.uniform(min_size * 0.8, max_size), 3)
+        x = round(random.uniform(-area_radius, area_radius), 2)
+        y = round(random.uniform(-area_radius, area_radius), 2)
+        z = sz
+        SubElement(worldbody, "geom", type="ellipsoid", size=f"{sx} {sy} {sz}",
+                   pos=f"{x} {y} {z}", material="rock")
+
+    # Inclure le robot (ceci sera remplacé à runtime dans evaluate_individual)
+    SubElement(worldbody, "include", file="AntRobot.xml")
+
+    ElementTree(mjcf).write(output_path)
+    print(f"[INFO] Nouveau terrain généré avec {n_obstacles} obstacles dans :\n  → {output_path}")
+
+
 
 class AntWorld(World):
     def __init__(self, ):
@@ -295,7 +344,15 @@ def main():
     world_xml = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
     robot_env = world_xml.getroot()
 
-    robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
+    #robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
+    # Évite d'inclure deux fois AntRobot.xml
+    already_included = any(
+        child.tag == "include" and child.attrib.get("file") == "AntRobot.xml"
+        for child in robot_env
+    )
+    if not already_included:
+        robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
+
     world_xml = xml.tostring(robot_env, encoding='unicode')
     with open(world.world_file, "w") as f:
         f.write(world_xml)
@@ -304,5 +361,6 @@ def main():
 
 
 if __name__ == "__main__":
+    generate_ant_world_with_obstacles()
     main()
 
