@@ -13,7 +13,7 @@ ROOT_DIR = get_project_root()
 
 class MyTestCase(unittest.TestCase):
     def test_gym(self):
-        ENV_NAMES = ["HalfCheetah-v5", "Ant-v5"]
+        ENV_NAMES = [ "Ant-v5"] ### "HalfCheetah-v5", "Ant-v5"
 
         for ENV_NAME in ENV_NAMES:
             env = gym.make(
@@ -21,7 +21,7 @@ class MyTestCase(unittest.TestCase):
                 render_mode='human')
             rewards = None
             env.reset()
-            for step in range(100):
+            for step in range(1000):
                 actions = np.random.uniform(low=-0.1, high=0.1, size=env.action_space.shape[0])
                 observations, rewards, terminated, truncated, info = env.step(actions)
                 if terminated:
@@ -32,7 +32,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_functions(self):
         pop_size = 100
-        n_params = 2
+        n_params =2
         results_dir = os.path.join(ROOT_DIR, "results", "TEST")
 
         ea = EA(pop_size, n_params, EA_opts, results_dir)
