@@ -1,5 +1,5 @@
 from src.EA.CMAES_sol import CMAES_sol, CMAES_opts
-from src.EA.NSGA import NSGAII, NSGA_opts
+from src.EA.NSGA_sol import NSGAII_sol, NSGA_opts
 from src.world.World import World
 from src.world.robot.controllers import MLP
 from src.world.robot.morphology.AntCustomRobot import AntRobot
@@ -27,7 +27,7 @@ class AntWorld(World):
         action_space = 8  # https://gymnasium.farama.org/environments/mujoco/ant/#action-space
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
-        self.n_repeats = 3
+        self.n_repeats = 8
         self.n_steps = 1000
         self.controller = MLP.NNController(state_space, action_space)
         self.n_weights = self.controller.n_params
@@ -170,7 +170,7 @@ class AntWorld(World):
 
 def run_EA_single(ea_single, world):
     for gen in range(ea_single.n_gen):
-        print(f"Generation {gen}")
+        print(f"Generation single {gen}")
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
@@ -181,6 +181,8 @@ def run_EA_single(ea_single, world):
 
 def run_EA_multi(ea_multi, world):
     for gen in range(ea_multi.n_gen):
+        print(f"Generation multi {gen}")
+
         pop = ea_multi.ask()
         fitnesses_gen = np.empty((len(pop), 2))
         for index, genotype in enumerate(pop):
@@ -243,7 +245,11 @@ def visualise_individual(genotype):
     print(np.sum(rewards_list))
 
 
+import time  # Ajout de l'import pour la mesure du temps
+
 def main():
+    start_time = time.time()  # Démarrage du chronomètre
+
     # %% Understanding the world
     genotype = np.random.uniform(-1, 1, 953)  # 8 body parameters, 945 NN weights
     visualise_individual(genotype)
@@ -264,28 +270,30 @@ def main():
 
     run_EA_single(ea_single, world)
 
-    # %% Optimise multi-objective
-    # TODO implement the NSGAII
-    world = AntWorld()
-    n_parameters = world.n_params
+    #  # %% Optimise multi-objective
+    # # TODO implement the NSGAII
+    # world = AntWorld()
+    # n_parameters = world.n_params
 
-    population_size = 250
-    NSGA_opts["min"] = -1
-    NSGA_opts["max"] = 1
-    NSGA_opts["num_parents"] = population_size
-    NSGA_opts["num_generations"] = 20
-    NSGA_opts["mutation_prob"] = 0.3
-    NSGA_opts["crossover_prob"] = 0.5
+    # population_size = 250
+    # NSGA_opts["min"] = -1
+    # NSGA_opts["max"] = 1
+    # NSGA_opts["num_parents"] = population_size
+    # NSGA_opts["num_generations"] = 20
+    # NSGA_opts["mutation_prob"] = 0.3
+    # NSGA_opts["crossover_prob"] = 0.5
 
-    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
-    ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
+    # results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
+    # ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
 
-    run_EA_multi(ea_multi_obj, world)
+    # run_EA_multi(ea_multi_obj, world)
 
     # %% visualise
-    # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "99", "x_best.npy"))
-
+    gen_idx = CMAES_opts["num_generations"] - 1  # ici, 0
+    best_individual_path = os.path.join(results_dir, str(gen_idx), "x_best.npy")
+    if not os.path.exists(best_individual_path):
+        raise FileNotFoundError(f"Le fichier {best_individual_path} n'existe pas.")
+    best_individual = np.load(best_individual_path)
     points, connectivity_mat = world.geno2pheno(best_individual)
     robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)
     robot.xml = robot.define_robot()
@@ -302,7 +310,11 @@ def main():
 
     generate_best_individual_video(world)
 
+    end_time = time.time()  # Fin du chronomètre
+    elapsed_time = end_time - start_time
+    print(f"Temps d'exécution total : {elapsed_time:.2f} secondes")
 
 if __name__ == "__main__":
     main()
+
 
