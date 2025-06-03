@@ -10,6 +10,7 @@
     <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100" />
     <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane" />
     <material name="geom" texture="texgeom" texuniform="true" />
+    <material name="rock" rgba="0.4 0.3 0.2 1" />
   </asset>
 
   <worldbody>
@@ -17,6 +18,30 @@
     <geom conaffinity="1" condim="3" material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="40 40 40" type="plane" />
     <geom name="slope" type="box" size="5 0.25 0.01" pos="4.5 0 0.0" rgba="0.75 0.55 0.1 1" euler="0 5 0" condim="4" />
     <geom type="ellipsoid" size="0.11 0.14 0.06" pos="-9.6 10.1 0.06" rgba="0.4 0.3 0.2 1" />
+    <geom type="ellipsoid" size="0.187 0.1 0.157" pos="-3.18 1.73 0.157" material="rock" />
+    <geom type="ellipsoid" size="0.121 0.174 0.088" pos="1.53 4.03 0.088" material="rock" />
+    <geom type="ellipsoid" size="0.116 0.187 0.131" pos="-2.76 -1.29 0.131" material="rock" />
+    <geom type="ellipsoid" size="0.094 0.091 0.087" pos="-4.27 2.95 0.087" material="rock" />
+    <geom type="ellipsoid" size="0.108 0.087 0.088" pos="-2.33 -1.42 0.088" material="rock" />
+    <geom type="ellipsoid" size="0.095 0.097 0.08" pos="-3.15 -0.89 0.08" material="rock" />
+    <geom type="ellipsoid" size="0.116 0.187 0.131" pos="-2.76 -1.29 0.131" material="rock" />
+    <geom type="ellipsoid" size="0.094 0.091 0.087" pos="-4.27 2.95 0.087" material="rock" />
+    <geom type="ellipsoid" size="0.108 0.087 0.088" pos="-2.33 -1.42 0.088" material="rock" />
+    <geom type="ellipsoid" size="0.095 0.097 0.08" pos="-3.15 -0.89 0.08" material="rock" />
+    <geom type="ellipsoid" size="0.086 0.109 0.134" pos="3.58 3.3 0.134" material="rock" />
+    <geom type="ellipsoid" size="0.114 0.184 0.199" pos="-3.32 -3.11 0.199" material="rock" />
+    <geom type="ellipsoid" size="0.128 0.133 0.165" pos="-4.86 4.44 0.165" material="rock" />
+    <geom type="ellipsoid" size="0.085 0.122 0.198" pos="0.72 -0.8 0.198" material="rock" />
+    <geom type="ellipsoid" size="0.142 0.142 0.168" pos="-2.59 3.23 0.168" material="rock" />
+    <geom type="ellipsoid" size="0.197 0.174 0.101" pos="1.21 -4.77 0.101" material="rock" />
+    <geom type="ellipsoid" size="0.167 0.085 0.08" pos="-3.6 2.35 0.08" material="rock" />
+    <geom type="ellipsoid" size="0.155 0.139 0.184" pos="3.6 -1.62 0.184" material="rock" />
+    <geom type="ellipsoid" size="0.148 0.119 0.176" pos="-3.34 -3.55 0.176" material="rock" />
+    <geom type="ellipsoid" size="0.193 0.188 0.12" pos="-0.41 3.43 0.12" material="rock" />
+    <geom type="ellipsoid" size="0.132 0.146 0.188" pos="3.56 -3.25 0.188" material="rock" />
+    <geom type="ellipsoid" size="0.148 0.144 0.151" pos="-4.5 -0.2 0.151" material="rock" />
+    <geom type="ellipsoid" size="0.088 0.176 0.129" pos="-0.03 -4.48 0.129" material="rock" />
+    <geom type="ellipsoid" size="0.163 0.172 0.091" pos="0.07 0.44 0.091" material="rock" />
 
   </worldbody>
 
