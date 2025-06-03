@@ -5,11 +5,14 @@ from src.world.robot.controllers import MLP
 from src.world.robot.morphology.AntCustomRobot import AntRobot
 from src.utils.Filesys import get_project_root
 from gymnasium.vector import AsyncVectorEnv
+from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 
 import xml.etree.ElementTree as xml
 import gymnasium as gym
 import numpy as np
 import os
+import random
+
 
 """ Large programming projects are often modularised in different components. 
     In the upcoming exercise(s) we will (re)build an evolutionary pipeline for robot evolution in MuJoCo.
@@ -20,6 +23,51 @@ import os
 
 ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
+
+def generate_random_ant_world(file_path, n_rocks=None, area_size=200, min_size=0.08, max_size=0.2, seed=None):
+    import random
+    from xml.etree.ElementTree import Element, SubElement, ElementTree
+
+    if seed is not None:
+        random.seed(seed)
+    if n_rocks is None:
+        n_rocks = random.randint(300, 500)
+
+    mjcf = Element("mujoco", model="tensegrity default scene")
+
+    SubElement(mjcf, "compiler", angle="degree", coordinate="local", inertiafromgeom="true", autolimits="true")
+    SubElement(mjcf, "option", integrator="RK4", timestep="0.01", gravity="0 0 -9.81")
+    SubElement(mjcf, "statistic", center="0 0 .3", extent="1.2")
+
+    asset = SubElement(mjcf, "asset")
+    SubElement(asset, "texture", builtin="gradient", height="100", rgb1="1 1 1", rgb2="0 0 0",
+               type="skybox", width="100")
+    SubElement(asset, "texture", builtin="flat", height="1278", mark="cross", markrgb="1 1 1",
+               name="texgeom", random="0.01", rgb1="0.8 0.6 0.4", rgb2="0.8 0.6 0.4", type="cube", width="127")
+    SubElement(asset, "texture", builtin="checker", height="100", name="texplane", rgb1="0 0 0",
+               rgb2="0.8 0.8 0.8", type="2d", width="100")
+    SubElement(asset, "material", name="MatPlane", reflectance="0.5", shininess="1", specular="1",
+               texrepeat="60 60", texture="texplane")
+    SubElement(asset, "material", name="geom", texture="texgeom", texuniform="true")
+    SubElement(asset, "material", name="rock", rgba="0.4 0.3 0.2 1")
+
+    worldbody = SubElement(mjcf, "worldbody")
+    SubElement(worldbody, "light", cutoff="100", diffuse="1 1 1", dir="-0 0 -1.3", directional="true",
+               exponent="1", pos="0 0 1.3", specular=".1 .1 .1")
+    SubElement(worldbody, "geom", conaffinity="1", condim="3", material="MatPlane", name="floor",
+               pos="0 0 0", rgba="0.8 0.9 0.8 1", size="40 40 40", type="plane")
+
+    for _ in range(n_rocks):
+        sx, sy, sz = [round(random.uniform(min_size, max_size), 3) for _ in range(3)]
+        x, y = [round(random.uniform(-area_size, area_size), 2) for _ in range(2)]
+        z = sz
+        SubElement(worldbody, "geom", type="ellipsoid", size=f"{sx} {sy} {sz}",
+                   pos=f"{x} {y} {z}", material="rock")
+
+    tree = ElementTree(mjcf)
+    tree.write(file_path)
+
+
 
 
 class AntWorld(World):
@@ -120,7 +168,15 @@ class AntWorld(World):
         robot.write_xml()
 
         # % Defining the Robot environment in MuJoCo
+        generate_random_ant_world(
+            file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
+            n_rocks=500,  # ou fixe : n_rocks=50
+            area_size=10,
+            min_size=0.08,
+            max_size=0.2
+        )
         world = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
+
         robot_env = world.getroot()
 
         robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
@@ -305,4 +361,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
