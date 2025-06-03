@@ -24,9 +24,10 @@ import random
 ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
 
-def generate_random_ant_world(file_path, n_rocks=None, area_size=200, min_size=0.08, max_size=0.2, seed=None):
+def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.2, max_size=2, seed=None):
     import random
-    from xml.etree.ElementTree import Element, SubElement, ElementTree
+    import xml.dom.minidom as minidom
+    from xml.etree.ElementTree import Element, SubElement, tostring
 
     if seed is not None:
         random.seed(seed)
@@ -35,37 +36,57 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=200, min_size=0
 
     mjcf = Element("mujoco", model="tensegrity default scene")
 
+    # Header settings
     SubElement(mjcf, "compiler", angle="degree", coordinate="local", inertiafromgeom="true", autolimits="true")
     SubElement(mjcf, "option", integrator="RK4", timestep="0.01", gravity="0 0 -9.81")
-    SubElement(mjcf, "statistic", center="0 0 .3", extent="1.2")
+    SubElement(mjcf, "statistic", center="0 0 .3", extent=str(area_size))
 
+    # Visual section (as in walker_world)
+    visual = SubElement(mjcf, "visual")
+    SubElement(visual, "headlight", diffuse="0.6 0.6 0.6", ambient="0.3 0.3 0.3", specular="0 0 0")
+    SubElement(visual, "rgba", haze="0.15 0.25 0.35 1")
+    SubElement(visual, "global", azimuth="120", elevation="-20")
+
+    # Assets
     asset = SubElement(mjcf, "asset")
-    SubElement(asset, "texture", builtin="gradient", height="100", rgb1="1 1 1", rgb2="0 0 0",
-               type="skybox", width="100")
-    SubElement(asset, "texture", builtin="flat", height="1278", mark="cross", markrgb="1 1 1",
-               name="texgeom", random="0.01", rgb1="0.8 0.6 0.4", rgb2="0.8 0.6 0.4", type="cube", width="127")
-    SubElement(asset, "texture", builtin="checker", height="100", name="texplane", rgb1="0 0 0",
-               rgb2="0.8 0.8 0.8", type="2d", width="100")
-    SubElement(asset, "material", name="MatPlane", reflectance="0.5", shininess="1", specular="1",
-               texrepeat="60 60", texture="texplane")
-    SubElement(asset, "material", name="geom", texture="texgeom", texuniform="true")
+    SubElement(asset, "texture", type="skybox", builtin="gradient", rgb1="0.3 0.5 0.7", rgb2="0 0 0", width="512", height="3072")
+    SubElement(asset, "texture", type="2d", name="groundplane", builtin="checker", mark="edge",
+               rgb1="0.2 0.3 0.4", rgb2="0.1 0.2 0.3", markrgb="0.8 0.8 0.8", width="300", height="300")
+    SubElement(asset, "material", name="groundplane", texture="groundplane", texuniform="true", texrepeat="5 5", reflectance="0.2")
     SubElement(asset, "material", name="rock", rgba="0.4 0.3 0.2 1")
 
+    # World body
     worldbody = SubElement(mjcf, "worldbody")
-    SubElement(worldbody, "light", cutoff="100", diffuse="1 1 1", dir="-0 0 -1.3", directional="true",
-               exponent="1", pos="0 0 1.3", specular=".1 .1 .1")
-    SubElement(worldbody, "geom", conaffinity="1", condim="3", material="MatPlane", name="floor",
-               pos="0 0 0", rgba="0.8 0.9 0.8 1", size="40 40 40", type="plane")
+    SubElement(worldbody, "light", pos="2.5 0 3", dir="0 0 -1", directional="false")
+    SubElement(worldbody, "geom", name="floor", size="0 0 0.05", type="plane",
+               material="groundplane", friction="150 150 150")
 
-    for _ in range(n_rocks):
+    # Generate rocks
+    i = 0
+    attempts = 0
+    max_attempts = n_rocks * 3  # pour éviter boucle infinie si area trop petit
+    while i < n_rocks and attempts < max_attempts:
         sx, sy, sz = [round(random.uniform(min_size, max_size), 3) for _ in range(3)]
         x, y = [round(random.uniform(-area_size, area_size), 2) for _ in range(2)]
         z = sz
-        SubElement(worldbody, "geom", type="ellipsoid", size=f"{sx} {sy} {sz}",
-                   pos=f"{x} {y} {z}", material="rock")
+        distance = (x**2 + y**2)**0.5
+        if distance < 1.0:  # zone sans cailloux autour du robot
+            attempts += 1
+            continue
 
-    tree = ElementTree(mjcf)
-    tree.write(file_path)
+        SubElement(worldbody, "geom", name=f"rock_{i}", type="ellipsoid",
+                   size=f"{sx} {sy} {sz}",
+                   pos=f"{x} {y} {z}",
+                   material="rock",
+                   contype="1", conaffinity="1", condim="3", density="500", friction="1 0.5 0.5")
+        i += 1
+        attempts += 1
+
+    # Pretty print
+    pretty_xml = minidom.parseString(tostring(mjcf, encoding="unicode")).toprettyxml(indent="  ")
+    with open(file_path, "w") as f:
+        f.write(pretty_xml)
+
 
 
 
@@ -171,9 +192,9 @@ class AntWorld(World):
         generate_random_ant_world(
             file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
             n_rocks=500,  # ou fixe : n_rocks=50
-            area_size=10,
-            min_size=0.08,
-            max_size=0.2
+            area_size=20,
+            min_size=0.005,
+            max_size=0.4
         )
         world = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
 
