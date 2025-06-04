@@ -444,6 +444,42 @@ def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='f
 
     plt.show()
 
+def plot_all_rewards(reward_dict, save_path='combined_fitness_plot.png'):
+    """
+    Plot multiple reward curves on the same plot.
+
+    Parameters:
+        reward_dict (dict): Dictionary with title as key and list/array as value.
+        save_path (str): Name of the file to save the plot.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+
+    # ✅ Créer le dossier reward_data s'il n'existe pas
+    output_dir = 'reward_data'
+    os.makedirs(output_dir, exist_ok=True)
+
+    save_path = os.path.join(output_dir, save_path)
+
+    # ✅ Création du plot
+    fig, ax = plt.subplots()
+
+    for label, values in reward_dict.items():
+        generations = range(len(values))
+        ax.plot(generations, values, marker='o', linestyle='-', label=label)
+
+    ax.set_xlabel('Generation')
+    ax.set_ylabel('Reward')
+    ax.set_title('All Fitness Metrics Over Generations')
+    ax.legend()
+    ax.grid(True)
+
+    plt.savefig(save_path)
+    print(f"Combined plot saved to {save_path}")
+    plt.show()
+
+
 
 def main():
     # %% Understanding the world
@@ -480,6 +516,13 @@ def main():
     plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
     plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
     plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
+
+    plot_all_rewards({
+    'Full fitness': ea_single.full_fitness_max,
+    'Forward fitness': ea_single.full_forward_fitness,
+    'Yaw fitness': ea_single.full_yaw_fitness,
+    'Drift fitness (penalty)': ea_single.full_drift_fitness
+    })
 
 
     # %% Optimise multi-objective
