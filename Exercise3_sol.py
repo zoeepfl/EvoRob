@@ -10,6 +10,8 @@ import xml.etree.ElementTree as xml
 import gymnasium as gym
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+
 
 """ Large programming projects are often modularised in different components. 
     In the upcoming exercise(s) we will (re)build an evolutionary pipeline for robot evolution in MuJoCo.
@@ -22,12 +24,15 @@ ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
 
 
+
+
+
 class AntWorld(World):
     def __init__(self, ):
         action_space = 8  # https://gymnasium.farama.org/environments/mujoco/ant/#action-space
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
-        self.n_repeats = 3
+        self.n_repeats = 1
         self.n_steps = 1000
         self.controller = MLP.NNController(state_space, action_space)
         self.n_weights = self.controller.n_params
@@ -44,20 +49,45 @@ class AntWorld(World):
                            [0, 0, 1], [-1, 1, 0],
                            [0, 0, 1], [1, 1, 0],
                            ]
+        self.rewards_forward = np.zeros((self.n_steps, self.n_repeats))
+
 
     def geno2pheno(self, genotype):
         control_weights = genotype[-self.n_weights:]
+
+        # scale_weights = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
+        scale_weights = (genotype[:-self.n_weights] + 1.5) / 3 * (0.2 - 0.1) + 0.1
+
         #body_params = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
         # body_params = ((genotype[:-self.n_weights]+ 1.5) / 3) * 1.4 + 0.1
-        body_params = ((genotype[:-self.n_weights] + 1) / 2) * (0.6 - 0.1) + 0.1
+        #body_params = ((genotype[:-self.n_weights] + 1) / 2) * (1.0 - 0.8) + 0.8
+      # Un seul gène pour la longueur des jambes
+        leg_length_gene = scale_weights[0]
+        leg_length = ((leg_length_gene + 1.5) / 5) *0.5 +0.1  # map to [0.8, 1.0]
 
+        ankle_gene = scale_weights[1]
+        ankle_length = ((ankle_gene + 1) / 2) * (1.0 - 0.8) + 0.8
+
+
+        # Construction de body_params avec jambes = leg_length, chevilles = ankle_length
+        body_params = np.array([
+            leg_length, ankle_length,   # front left
+            leg_length, ankle_length,   # front right
+            leg_length, ankle_length,   # back left
+            leg_length, ankle_length    # back right
+        ])
+
+        # Vérifications
         assert len(body_params) == 8
         assert len(control_weights) == self.n_weights
         assert not np.any(body_params <= 0)
 
+        # Conversion du contrôleur
         self.controller.geno2pheno(control_weights)
 
-        front_left_leg, front_left_ankle, front_right_leg, front_right_ankle, back_left_leg, back_left_ankle, back_right_leg, back_right_ankle, = body_params
+        # Décomposition
+        front_left_leg, front_left_ankle, front_right_leg, front_right_ankle, back_left_leg, back_left_ankle, back_right_leg, back_right_ankle = body_params
+
 
         # Define the 3D coordinates of the relative tree structure
         front_left_hip_xyz = np.array([0.2, 0.2, 0])
@@ -145,6 +175,7 @@ class AntWorld(World):
         )
 
         rewards_full = np.zeros((self.n_steps, self.n_repeats))
+
         # multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
 
         observations, info = envs.reset()
@@ -155,7 +186,8 @@ class AntWorld(World):
 
             # Store rewards for active environments only
             rewards_full[step, done_mask == False] = rewards[done_mask == False]
-
+            self.rewards_forward[step, done_mask == False] = infos['reward_forward'][done_mask == False]
+        
             # multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
             # multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
 
@@ -168,9 +200,19 @@ class AntWorld(World):
         final_rewards = np.sum(rewards_full, axis=0)
         # final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
         envs.close()
-        return np.mean(final_rewards)
+        return np.mean(final_rewards),infos
     # , np.mean(final_multi_obj_rewards, axis=0)
 
+    # def plot_rewards(self):
+
+    #     plt.figure(figsize=(10, 5))
+    #     plt.plot(np.arange(self.n_steps), self.rewards_forward, label='Forward Rewards')
+    #     plt.xlabel('Steps')
+    #     plt.ylabel('Rewards')
+    #     plt.title('Rewards Over Time')
+    #     plt.legend()
+    #     plt.grid()
+    #     plt.show()
 
 # def run_EA_single(ea_single, world):
 #     for gen in range(ea_single.n_gen):
@@ -190,10 +232,10 @@ def run_EA_single(ea_single, world):
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
-            fit_ind = world.evaluate_individual(genotype)
+            fit_ind,infos= world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
 
-        ea_single.tell(pop, fitnesses_gen)  # Le checkpoint est automatiquement géré ici
+        ea_single.tell(pop, fitnesses_gen,infos)  # Le checkpoint est automatiquement géré ici
 
 
 
@@ -208,6 +250,7 @@ def run_EA_multi(ea_multi, world):
 
 
 def generate_best_individual_video(world, video_name: str = 'EvoRob5_video.mp4'):
+    print("Creating video of the best individual...",video_name)
     env = gym.make(ENV_NAME,
                    robot_path=world.world_file,
                    render_mode="rgb_array")
@@ -220,13 +263,14 @@ def generate_best_individual_video(world, video_name: str = 'EvoRob5_video.mp4')
         action = world.controller.get_action(observations)
         observations, rewards, terminated, truncated, info = env.step(action)
         rewards_list.append(rewards)
-        if terminated:
-            break
+        # if terminated:
+        #     break
     print(np.sum(rewards_list))
 
     import imageio
     imageio.mimsave(video_name, frames, fps=30)  # Set frames per second (fps)
     env.close()
+
 
 
 import time
@@ -263,6 +307,45 @@ def visualise_individual(genotype):
     print("Reward total:", np.sum(rewards_list))
 
 
+def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='full_fitness_max.csv'):
+    """
+    Plot the rewards over generations with lines and points, and save the plot and data in the 'reward_data' folder.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+
+    # ✅ Créer le dossier reward_data s'il n'existe pas
+    output_dir = 'reward_data'
+    os.makedirs(output_dir, exist_ok=True)
+
+    # ✅ Mettre à jour les chemins avec le dossier
+    save_path = os.path.join(output_dir, save_path)
+    data_path = os.path.join(output_dir, data_path)
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    generations = range(len(value))
+    ax.plot(generations, value, label='Fitness', marker='o', linestyle='-', color='blue')
+
+    ax.set_xlabel('Generation')
+    ax.set_ylabel('Reward')
+    ax.set_title(title)
+    ax.legend()
+
+    # ✅ Sauvegarder le graphique
+    plt.savefig(save_path)
+    print(f"Plot saved to {save_path}")
+
+    # ✅ Sauvegarder les données
+    np.savetxt(data_path, value, delimiter=',')
+    print(f"Fitness data saved to {data_path}")
+
+    plt.show()
+
+
+
 
 def main():
     # %% Understanding the world
@@ -270,26 +353,33 @@ def main():
     # for i in range(8):
     #     visualise_individual(genotype)
     world = AntWorld()
+
     n_parameters = world.n_params
 
     population_size = 250
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 150
+    CMAES_opts["num_generations"] = 5
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
+
     ea_single = CMAES_sol(population_size, n_parameters, CMAES_opts, results_dir)
 
     #Vérifie si un checkpoint existe
-    try:
-        ea_single.load_checkpoint(1)
-        print(f"Checkpoint trouvé ! Reprise depuis la génération {ea_single.current_gen}")
-    except AssertionError:
-        print("Aucun checkpoint trouvé. Nouveau run.")
+    # try:
+    #     ea_single.load_checkpoint(1)
+    #     print(f"Checkpoint trouvé ! Reprise depuis la génération {ea_single.current_gen}")
+    # except AssertionError:
+    #     print("Aucun checkpoint trouvé. Nouveau run.")
 
     run_EA_single(ea_single, world)
+    #world.plot_rewards()
+    print("full fitness",len(ea_single.full_fitness))
+    print("max fitness:", len(ea_single.full_fitness_max))
+    plot_rewards(ea_single.full_fitness_max,'full fitness',save_path='fitness_max_plot.png', data_path='full_fitness_max.csv')
+    plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
 
 
     # %% Optimise multi-objective
@@ -312,7 +402,7 @@ def main():
 
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "148", "x_best.npy"))
+    best_individual = np.load(os.path.join(results_dir, "145", "x_best.npy"))
 
     points, connectivity_mat = world.geno2pheno(best_individual)
     robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)

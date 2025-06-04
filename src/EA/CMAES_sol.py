@@ -35,6 +35,8 @@ class CMAES_sol():
         self.directory_name = output_dir
         self.full_x = []
         self.full_fitness = []
+        self.full_fitness_max= []
+        self.full_forward_fitness = []
         self.x_best_so_far = None
         self.f_best_so_far = -np.inf
         self.x = [None] * self.n_pop
@@ -55,12 +57,15 @@ class CMAES_sol():
         new_population = np.clip(new_population, self.min, self.max)
         return new_population
 
-    def tell(self, solutions, function_values, save_checkpoint=True):
+    def tell(self, solutions, function_values,infos, save_checkpoint=True):
+        print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n")
         self.cmaes.tell(solutions, -function_values)
 
 
         #% Some bookkeeping
         self.full_fitness.append(function_values)
+        self.full_fitness_max.append(np.max(function_values))
+        self.full_forward_fitness.append(np.max(infos['reward_forward']))
         self.full_x.append(solutions)
         self.f = function_values
         self.x = solutions
@@ -128,3 +133,4 @@ class CMAES_sol():
         # Restauration de l’état interne du solveur CMA-ES
         with open(os.path.join(curr_gen_path, 'cmaes.pkl'), 'rb') as f:
             self.cmaes = pickle.load(f)
+    
