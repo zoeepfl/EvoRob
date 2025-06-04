@@ -186,14 +186,6 @@ class AntWorld(World):
         robot.xml = robot.define_robot()
         robot.write_xml()
 
-        # % Defining the Robot environment in MuJoCo
-        generate_random_ant_world(
-            file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
-            n_rocks=500,  # ou fixe : n_rocks=50
-            area_size=20,
-            min_size=0.005,
-            max_size=0.4
-        )
         world = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
 
         robot_env = world.getroot()
@@ -248,6 +240,14 @@ class AntWorld(World):
 def run_EA_single(ea_single, world):
     for gen in range(ea_single.n_gen):
         print(f"Generation {gen}")
+        # % Defining the Robot environment in MuJoCo
+        generate_random_ant_world(
+            file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
+            n_rocks=500,  # ou fixe : n_rocks=50
+            area_size=20,
+            min_size=0.005,
+            max_size=0.4
+        )
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
