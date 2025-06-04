@@ -1,5 +1,5 @@
 from src.EA.CMAES_sol import CMAES_sol, CMAES_opts
-from src.EA.NSGA import NSGAII, NSGA_opts
+from src.EA.NSGA_sol import NSGAII_sol, NSGA_opts
 from src.world.World import World
 from src.world.robot.controllers import MLP
 from src.world.robot.morphology.AntCustomRobot import AntRobot
@@ -8,6 +8,7 @@ from gymnasium.vector import AsyncVectorEnv
 from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 
 import xml.etree.ElementTree as xml
+import xml.dom.minidom as minidom
 import gymnasium as gym
 import numpy as np
 import os
@@ -25,10 +26,6 @@ ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
 
 def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.2, max_size=2, seed=None):
-    import random
-    import xml.dom.minidom as minidom
-    from xml.etree.ElementTree import Element, SubElement, tostring
-
     if seed is not None:
         random.seed(seed)
     if n_rocks is None:
@@ -219,7 +216,7 @@ class AntWorld(World):
         )
 
         rewards_full = np.zeros((self.n_steps, self.n_repeats))
-        multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
+        # multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
 
         observations, info = envs.reset()
         done_mask = np.zeros(self.n_repeats, dtype=bool)
@@ -230,8 +227,8 @@ class AntWorld(World):
             # Store rewards for active environments only
             rewards_full[step, done_mask == False] = rewards[done_mask == False]
 
-            multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
-            multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
+            # multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
+            # multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
 
             # Update the done mask based on the "done" and "truncated" flags
             done_mask = done_mask | dones | truncated
@@ -240,9 +237,11 @@ class AntWorld(World):
             if np.all(done_mask):
                 break
         final_rewards = np.sum(rewards_full, axis=0)
-        final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
+        # final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
         envs.close()
-        return np.mean(final_rewards), np.mean(final_multi_obj_rewards, axis=0)
+        # return np.mean(final_rewards), np.mean(final_multi_obj_rewards, axis=0)
+        return np.mean(final_rewards)
+
 
 
 def run_EA_single(ea_single, world):
@@ -333,7 +332,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 100
+    CMAES_opts["num_generations"] = 300
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
@@ -343,21 +342,21 @@ def main():
 
     # %% Optimise multi-objective
     # TODO implement the NSGAII
-    world = AntWorld()
-    n_parameters = world.n_params
-
-    population_size = 250
-    NSGA_opts["min"] = -1
-    NSGA_opts["max"] = 1
-    NSGA_opts["num_parents"] = population_size
-    NSGA_opts["num_generations"] = 20
-    NSGA_opts["mutation_prob"] = 0.3
-    NSGA_opts["crossover_prob"] = 0.5
-
-    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
-    ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
-
-    run_EA_multi(ea_multi_obj, world)
+    # world = AntWorld()
+    # n_parameters = world.n_params
+# 
+    # population_size = 250
+    # NSGA_opts["min"] = -1
+    # NSGA_opts["max"] = 1
+    # NSGA_opts["num_parents"] = population_size
+    # NSGA_opts["num_generations"] = 20
+    # NSGA_opts["mutation_prob"] = 0.3
+    # NSGA_opts["crossover_prob"] = 0.5
+# 
+    # results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
+    # ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
+# 
+    # run_EA_multi(ea_multi_obj, world)
 
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
