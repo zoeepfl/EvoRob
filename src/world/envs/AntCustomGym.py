@@ -140,7 +140,7 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
             1.0 - 2.0 * (quat[2] ** 2 + quat[3] ** 2)
         )
         reward_yaw = (np.cos(yaw) + 1) / 2  # entre 0 et 1
-        print("yaw : ", yaw)
+        # print("yaw : ", yaw)
 
         # Y penalty reward (Y close to 0)
         drift = np.abs(self.data.qpos[1])
@@ -154,7 +154,7 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
             "reward_forward": forward_reward,
             "healthy_reward": healthy_reward,
             "yaw_reward": reward_yaw,
-            "drift (Y) penalty reward": drift_penalty,
+            "drift penalty reward": drift_penalty,
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
             "x_position": self.data.qpos[0],

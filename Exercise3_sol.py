@@ -445,9 +445,6 @@ def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='f
     plt.show()
 
 
-    print("Reward total:", np.sum(rewards_list))
-
-
 def main():
     # %% Understanding the world
     genotype = np.random.uniform(-1, 1, 953)  # 8 body parameters, 945 NN weights
@@ -481,6 +478,8 @@ def main():
     print("max fitness:", len(ea_single.full_fitness_max))
     plot_rewards(ea_single.full_fitness_max,'full fitness',save_path='fitness_max_plot.png', data_path='full_fitness_max.csv')
     plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
+    plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
+    plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
 
 
     # %% Optimise multi-objective

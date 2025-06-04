@@ -37,6 +37,8 @@ class CMAES_sol():
         self.full_fitness = []
         self.full_fitness_max= []
         self.full_forward_fitness = []
+        self.full_yaw_fitness = []
+        self.full_drift_fitness = []
         self.x_best_so_far = None
         self.f_best_so_far = -np.inf
         self.x = [None] * self.n_pop
@@ -66,6 +68,8 @@ class CMAES_sol():
         self.full_fitness.append(function_values)
         self.full_fitness_max.append(np.max(function_values))
         self.full_forward_fitness.append(np.max(infos['reward_forward']))
+        self.full_yaw_fitness.append(np.max(infos['yaw_reward']))
+        self.full_drift_fitness.append(np.max(infos['drift penalty reward']))
         self.full_x.append(solutions)
         self.f = function_values
         self.x = solutions
