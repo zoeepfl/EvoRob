@@ -468,7 +468,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 5
+    CMAES_opts["num_generations"] = 2
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
@@ -490,16 +490,16 @@ def main():
     plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
     plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
     plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
-    plot_rewards(ea_single.full_ctrl_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
-    plot_rewards(ea_single.full_cfrc_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
+    plot_rewards(ea_single.full_ctrl_cost_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
+    plot_rewards(ea_single.full_cfrc_cost_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
 
     plot_all_rewards({
     'Full fitness': ea_single.full_fitness_max,
     'Forward fitness': ea_single.full_forward_fitness,
     'Yaw fitness': ea_single.full_yaw_fitness,
     'Drift fitness (penalty)': ea_single.full_drift_fitness,
-    'ctrl fitness': ea_single.full_ctrl_fitness,
-    'cfrc fitness': ea_single.full_cfrc_fitness
+    'ctrl fitness': ea_single.full_ctrl_cost_fitness,
+    'cfrc fitness': ea_single.full_cfrc_cost_fitness
     })
 
 
