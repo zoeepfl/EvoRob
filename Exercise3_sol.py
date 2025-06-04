@@ -90,32 +90,6 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.
     with open(file_path, "w") as f:
         f.write(pretty_xml)
 
-def plot_ant_rewards(all_infos):
-    """
-    Agrège les rewards de tous les steps et les affiche sous forme de graphes.
-    `all_infos` doit être une liste de dictionnaires retournés par l'env (clé 'info' de step()).
-    """
-    steps = len(all_infos)
-    reward_keys = ["reward_forward", "healthy_reward", "yaw_reward", "Y penalty reward", "ctrl_cost", "cfrc_cost", "reward"]
-    reward_data = {key: np.zeros(steps) for key in reward_keys}
-
-    for i, info in enumerate(all_infos):
-        for key in reward_keys:
-            reward_data[key][i] = info.get(key, 0.0)
-
-    # Tracer chaque courbe
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for key, values in reward_data.items():
-        ax.plot(values, label=key)
-
-    ax.set_title("Reward components over time")
-    ax.set_xlabel("Simulation step")
-    ax.set_ylabel("Reward value")
-    ax.legend()
-    ax.grid(True)
-    plt.tight_layout()
-    plt.show()
-
 
 class AntWorld(World):
     def __init__(self, ):
@@ -123,7 +97,7 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
-        self.n_steps = 1000
+        self.n_steps = 5000
         self.controller = MLP.NNController(state_space, action_space)
         self.n_weights = self.controller.n_params
 
@@ -516,12 +490,16 @@ def main():
     plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
     plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
     plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
+    plot_rewards(ea_single.full_ctrl_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
+    plot_rewards(ea_single.full_cfrc_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
 
     plot_all_rewards({
     'Full fitness': ea_single.full_fitness_max,
     'Forward fitness': ea_single.full_forward_fitness,
     'Yaw fitness': ea_single.full_yaw_fitness,
-    'Drift fitness (penalty)': ea_single.full_drift_fitness
+    'Drift fitness (penalty)': ea_single.full_drift_fitness,
+    'ctrl fitness': ea_single.full_ctrl_fitness,
+    'cfrc fitness': ea_single.full_cfrc_fitness
     })
 
 
