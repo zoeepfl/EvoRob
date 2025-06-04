@@ -127,7 +127,7 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         x_velocity, y_velocity = xy_velocity
 
         # forward_reward = x_velocity * self._forward_reward_weight
-        forward_reward = np.clip(x_velocity, 0.2, 0.8) * self._forward_reward_weight
+        forward_reward = np.clip(x_velocity, 0.2, 0.8) * 2
         healthy_reward = 1
         ctrl_cost = np.linalg.norm(action)**2 * self._ctrl_cost_weight
         cfrc_cost = np.linalg.norm( self.data.cfrc_ext[1:])**2 * self._cfrc_cost_weight
@@ -135,19 +135,21 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         # Reward Yaw
         quat = self.data.body(self._main_body).xquat
         # Convert quaternion to yaw (heading in radians)
-        yaw = np.arctan2(
+        yaw_rad = np.arctan2(
             2.0 * (quat[0] * quat[3] + quat[1] * quat[2]),
             1.0 - 2.0 * (quat[2] ** 2 + quat[3] ** 2)
         )
-        reward_yaw = (np.cos(yaw) + 1) / 2  # entre 0 et 1
+        yaw = np.degrees(yaw_rad)
+        # print("yaw : ", yaw)
+        reward_yaw = np.exp(-(yaw**2)/10)
         # print("yaw : ", yaw)
 
         # Y penalty reward (Y close to 0)
         drift = np.abs(self.data.qpos[1])
-        drift_penalty = -0.01 * abs(drift)
+        drift_penalty = -1 * abs(drift)
 
         #TODO
-        reward = healthy_reward + forward_reward - ctrl_cost - cfrc_cost
+        reward = healthy_reward + forward_reward - ctrl_cost - cfrc_cost + reward_yaw + drift_penalty
         observation = self._get_obs()
 
         info = {
@@ -155,8 +157,8 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
             "healthy_reward": healthy_reward,
             "yaw_reward": reward_yaw,
             "drift penalty reward": drift_penalty,
-            "ctrl_cost": ctrl_cost,
-            "cfrc_cost": cfrc_cost,
+            "ctrl_cost": - ctrl_cost,
+            "cfrc_cost": - cfrc_cost,
             "x_position": self.data.qpos[0],
             "y_position": self.data.qpos[1],
             "distance_from_origin": np.linalg.norm(self.data.qpos[0:2], ord=2),
