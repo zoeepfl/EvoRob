@@ -5,6 +5,8 @@ import numpy as np
 import cma
 
 
+import pickle
+
 from src.utils.Filesys import search_file_list
 
 CMAES_opts = {
@@ -82,9 +84,12 @@ class CMAES_sol():
         return mean_vector
 
 
+
     def save_checkpoint(self):
         curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
         os.makedirs(curr_gen_path, exist_ok=True)
+
+        # Sauvegarde des données de la population
         np.save(os.path.join(self.directory_name, 'full_f'), np.array(self.full_fitness))
         np.save(os.path.join(self.directory_name, 'full_x'), np.array(self.full_x))
         np.save(os.path.join(curr_gen_path, 'f_best'), np.array(self.f_best_so_far))
@@ -92,21 +97,34 @@ class CMAES_sol():
         np.save(os.path.join(curr_gen_path, 'x'), np.array(self.x))
         np.save(os.path.join(curr_gen_path, 'f'), np.array(self.f))
 
-    def load_checkpoint(self):
-        dir_path = search_file_list(self.directory_name, 'f_best.npy')
-        assert len(dir_path) > 0;
-        "No files are here, check the directory_name!!"
+        # Sauvegarde de l’état interne du solveur CMA-ES
+        with open(os.path.join(curr_gen_path, 'cmaes.pkl'), 'wb') as f:
+            pickle.dump(self.cmaes, f)
 
-        self.current_gen = int(dir_path[-1].split('/')[-2])
-        curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
+
+    def load_checkpoint(self, gen_id=None):
+        """
+        Charge un checkpoint d'une génération donnée (ou la dernière si gen_id=None).
+        """
+        if gen_id is None:
+            # Recherche de la dernière génération contenant 'f_best.npy'
+            dir_path = search_file_list(self.directory_name, 'f_best.npy')
+            assert len(dir_path) > 0, "No checkpoint files found. Check the directory_name!"
+            gen_id = int(dir_path[-1].split('/')[-2])
+
+        self.current_gen = gen_id
+        curr_gen_path = os.path.join(self.directory_name, str(gen_id))
         print(f"Loading from: {curr_gen_path}")
-        self.full_fitness = np.load(os.path.join(self.directory_name, 'full_f.npy'))
-        self.full_x = np.load(os.path.join(self.directory_name, 'full_x.npy'))
+
+        # Chargement des données de population
+        self.full_fitness = list(np.load(os.path.join(self.directory_name, 'full_f.npy'), allow_pickle=True))
+        self.full_x = list(np.load(os.path.join(self.directory_name, 'full_x.npy'), allow_pickle=True))
+
         self.f_best_so_far = np.load(os.path.join(curr_gen_path, 'f_best.npy'))
         self.x_best_so_far = np.load(os.path.join(curr_gen_path, 'x_best.npy'))
         self.x = np.load(os.path.join(curr_gen_path, 'x.npy'))
         self.f = np.load(os.path.join(curr_gen_path, 'f.npy'))
 
-        self.cmaes = self.load_cmaes()
-        for x, f in zip(self.full_x, self.full_fitness):
-            self.cmaes.tell(x, f)
+        # Restauration de l’état interne du solveur CMA-ES
+        with open(os.path.join(curr_gen_path, 'cmaes.pkl'), 'rb') as f:
+            self.cmaes = pickle.load(f)

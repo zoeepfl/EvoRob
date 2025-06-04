@@ -47,7 +47,10 @@ class AntWorld(World):
 
     def geno2pheno(self, genotype):
         control_weights = genotype[-self.n_weights:]
-        body_params = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
+        #body_params = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
+        # body_params = ((genotype[:-self.n_weights]+ 1.5) / 3) * 1.4 + 0.1
+        body_params = ((genotype[:-self.n_weights] + 1) / 2) * (0.6 - 0.1) + 0.1
+
         assert len(body_params) == 8
         assert len(control_weights) == self.n_weights
         assert not np.any(body_params <= 0)
@@ -142,7 +145,7 @@ class AntWorld(World):
         )
 
         rewards_full = np.zeros((self.n_steps, self.n_repeats))
-        multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
+        # multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
 
         observations, info = envs.reset()
         done_mask = np.zeros(self.n_repeats, dtype=bool)
@@ -153,8 +156,8 @@ class AntWorld(World):
             # Store rewards for active environments only
             rewards_full[step, done_mask == False] = rewards[done_mask == False]
 
-            multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
-            multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
+            # multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
+            # multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
 
             # Update the done mask based on the "done" and "truncated" flags
             done_mask = done_mask | dones | truncated
@@ -163,20 +166,35 @@ class AntWorld(World):
             if np.all(done_mask):
                 break
         final_rewards = np.sum(rewards_full, axis=0)
-        final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
+        # final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
         envs.close()
-        return np.mean(final_rewards), np.mean(final_multi_obj_rewards, axis=0)
+        return np.mean(final_rewards)
+    # , np.mean(final_multi_obj_rewards, axis=0)
 
+
+# def run_EA_single(ea_single, world):
+#     for gen in range(ea_single.n_gen):
+#         print(f"Generation {gen}")
+#         pop = ea_single.ask()
+#         fitnesses_gen = np.empty(len(pop))
+#         for index, genotype in enumerate(pop):
+#             fit_ind, _ = world.evaluate_individual(genotype)
+#             fitnesses_gen[index] = fit_ind
+#         ea_single.tell(pop, fitnesses_gen)
 
 def run_EA_single(ea_single, world):
-    for gen in range(ea_single.n_gen):
+    start_gen = ea_single.current_gen + 1  # On continue après le checkpoint
+
+    for gen in range(start_gen, ea_single.n_gen):
         print(f"Generation {gen}")
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
-            fit_ind, _ = world.evaluate_individual(genotype)
+            fit_ind = world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
-        ea_single.tell(pop, fitnesses_gen)
+
+        ea_single.tell(pop, fitnesses_gen)  # Le checkpoint est automatiquement géré ici
+
 
 
 def run_EA_multi(ea_multi, world):
@@ -189,7 +207,7 @@ def run_EA_multi(ea_multi, world):
         ea_multi.tell(pop, fitnesses_gen)
 
 
-def generate_best_individual_video(world, video_name: str = 'EvoRob3_video.mp4'):
+def generate_best_individual_video(world, video_name: str = 'EvoRob5_video.mp4'):
     env = gym.make(ENV_NAME,
                    robot_path=world.world_file,
                    render_mode="rgb_array")
@@ -211,6 +229,8 @@ def generate_best_individual_video(world, video_name: str = 'EvoRob3_video.mp4')
     env.close()
 
 
+import time
+
 def visualise_individual(genotype):
     world = AntWorld()
     points, connectivity_mat = world.geno2pheno(genotype)
@@ -218,18 +238,15 @@ def visualise_individual(genotype):
     robot.xml = robot.define_robot()
     robot.write_xml()
 
-    # % Defining the Robot environment in MuJoCo
     world_xml = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
     robot_env = world_xml.getroot()
-
     robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
-    world_xml = xml.tostring(robot_env, encoding='unicode')
-    with open(world.world_file, "w") as f:
-        f.write(world_xml)
+    full_world_xml = xml.tostring(robot_env, encoding='unicode')
 
-    env = gym.make(ENV_NAME,
-                   robot_path=world.world_file,
-                   render_mode="human")
+    with open(world.world_file, "w") as f:
+        f.write(full_world_xml)
+
+    env = gym.make(ENV_NAME, robot_path=world.world_file, render_mode="human")
     rewards_list = []
 
     observations, info = env.reset()
@@ -237,18 +254,21 @@ def visualise_individual(genotype):
         action = world.controller.get_action(observations)
         observations, rewards, terminated, truncated, info = env.step(action)
         rewards_list.append(rewards)
-        if terminated:
+        env.render()  # <<< important pour que la fenêtre reste ouverte
+        time.sleep(1 / 60)  # <<< ralenti la simulation
+        if terminated or truncated:
             break
+
     env.close()
-    print(np.sum(rewards_list))
+    print("Reward total:", np.sum(rewards_list))
+
 
 
 def main():
     # %% Understanding the world
     genotype = np.random.uniform(-1, 1, 953)  # 8 body parameters, 945 NN weights
-    visualise_individual(genotype)
-
-    # %% Optimise single-objective
+    # for i in range(8):
+    #     visualise_individual(genotype)
     world = AntWorld()
     n_parameters = world.n_params
 
@@ -256,35 +276,43 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 100
+    CMAES_opts["num_generations"] = 150
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
     ea_single = CMAES_sol(population_size, n_parameters, CMAES_opts, results_dir)
 
+    #Vérifie si un checkpoint existe
+    try:
+        ea_single.load_checkpoint(1)
+        print(f"Checkpoint trouvé ! Reprise depuis la génération {ea_single.current_gen}")
+    except AssertionError:
+        print("Aucun checkpoint trouvé. Nouveau run.")
+
     run_EA_single(ea_single, world)
 
+
     # %% Optimise multi-objective
-    # TODO implement the NSGAII
-    world = AntWorld()
-    n_parameters = world.n_params
+    # # TODO implement the NSGAII
+    # world = AntWorld()
+    # n_parameters = world.n_params
 
-    population_size = 250
-    NSGA_opts["min"] = -1
-    NSGA_opts["max"] = 1
-    NSGA_opts["num_parents"] = population_size
-    NSGA_opts["num_generations"] = 20
-    NSGA_opts["mutation_prob"] = 0.3
-    NSGA_opts["crossover_prob"] = 0.5
+    # population_size = 250
+    # NSGA_opts["min"] = -1
+    # NSGA_opts["max"] = 1
+    # NSGA_opts["num_parents"] = population_size
+    # NSGA_opts["num_generations"] = 20
+    # NSGA_opts["mutation_prob"] = 0.3
+    # NSGA_opts["crossover_prob"] = 0.5
 
-    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
-    ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
+    # results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'multi')
+    # ea_multi_obj = NSGAII_sol(population_size, n_parameters, NSGA_opts, results_dir)
 
-    run_EA_multi(ea_multi_obj, world)
+    # run_EA_multi(ea_multi_obj, world)
 
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "99", "x_best.npy"))
+    best_individual = np.load(os.path.join(results_dir, "148", "x_best.npy"))
 
     points, connectivity_mat = world.geno2pheno(best_individual)
     robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)
@@ -300,7 +328,7 @@ def main():
     with open(world.world_file, "w") as f:
         f.write(world_xml)
 
-    generate_best_individual_video(world)
+    generate_best_individual_video(world,'test_3.mp4')
 
 
 if __name__ == "__main__":
