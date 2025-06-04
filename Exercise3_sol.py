@@ -85,8 +85,31 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.
     with open(file_path, "w") as f:
         f.write(pretty_xml)
 
+def plot_ant_rewards(all_infos):
+    """
+    Agrège les rewards de tous les steps et les affiche sous forme de graphes.
+    `all_infos` doit être une liste de dictionnaires retournés par l'env (clé 'info' de step()).
+    """
+    steps = len(all_infos)
+    reward_keys = ["reward_forward", "healthy_reward", "yaw_reward", "Y penalty reward", "ctrl_cost", "cfrc_cost", "reward"]
+    reward_data = {key: np.zeros(steps) for key in reward_keys}
 
+    for i, info in enumerate(all_infos):
+        for key in reward_keys:
+            reward_data[key][i] = info.get(key, 0.0)
 
+    # Tracer chaque courbe
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for key, values in reward_data.items():
+        ax.plot(values, label=key)
+
+    ax.set_title("Reward components over time")
+    ax.set_xlabel("Simulation step")
+    ax.set_ylabel("Reward value")
+    ax.legend()
+    ax.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 class AntWorld(World):
@@ -333,7 +356,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 10
+    CMAES_opts["num_generations"] = 100
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
