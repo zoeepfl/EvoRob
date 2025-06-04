@@ -250,7 +250,7 @@ def run_EA_single(ea_single, world):
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
-            fit_ind, _ = world.evaluate_individual(genotype)
+            fit_ind = world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
         ea_single.tell(pop, fitnesses_gen)
 
