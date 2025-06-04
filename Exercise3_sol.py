@@ -13,6 +13,7 @@ import gymnasium as gym
 import numpy as np
 import os
 import random
+import time
 
 
 """ Large programming projects are often modularised in different components. 
@@ -250,7 +251,7 @@ def run_EA_single(ea_single, world):
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
-            fit_ind, _ = world.evaluate_individual(genotype)
+            fit_ind = world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
         ea_single.tell(pop, fitnesses_gen)
 
@@ -294,18 +295,15 @@ def visualise_individual(genotype):
     robot.xml = robot.define_robot()
     robot.write_xml()
 
-    # % Defining the Robot environment in MuJoCo
     world_xml = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
     robot_env = world_xml.getroot()
-
     robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
-    world_xml = xml.tostring(robot_env, encoding='unicode')
-    with open(world.world_file, "w") as f:
-        f.write(world_xml)
+    full_world_xml = xml.tostring(robot_env, encoding='unicode')
 
-    env = gym.make(ENV_NAME,
-                   robot_path=world.world_file,
-                   render_mode="human")
+    with open(world.world_file, "w") as f:
+        f.write(full_world_xml)
+
+    env = gym.make(ENV_NAME, robot_path=world.world_file, render_mode="human")
     rewards_list = []
 
     observations, info = env.reset()
@@ -313,10 +311,13 @@ def visualise_individual(genotype):
         action = world.controller.get_action(observations)
         observations, rewards, terminated, truncated, info = env.step(action)
         rewards_list.append(rewards)
-        if terminated:
+        env.render()  # <<< important pour que la fenêtre reste ouverte
+        time.sleep(1 / 60)  # <<< ralenti la simulation
+        if terminated or truncated:
             break
+
     env.close()
-    print(np.sum(rewards_list))
+    print("Reward total:", np.sum(rewards_list))
 
 
 def main():
@@ -332,7 +333,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 300
+    CMAES_opts["num_generations"] = 10
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
