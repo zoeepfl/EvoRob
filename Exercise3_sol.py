@@ -245,6 +245,11 @@ class AntWorld(World):
         )
 
         rewards_full = np.zeros((self.n_steps, self.n_repeats))
+        rewards_forward = np.zeros((self.n_steps, self.n_repeats))
+        rewards_yaw = np.zeros((self.n_steps, self.n_repeats))
+        rewards_drift = np.zeros((self.n_steps, self.n_repeats))
+        rewards_ctrl_cost = np.zeros((self.n_steps, self.n_repeats))
+        rewards_cfrc_cost = np.zeros((self.n_steps, self.n_repeats))
         # multi_obj_rewards_full = np.zeros((self.n_steps, self.n_repeats, 2))  # TODO
 
         observations, info = envs.reset()
@@ -255,6 +260,13 @@ class AntWorld(World):
 
             # Store rewards for active environments only
             rewards_full[step, done_mask == False] = rewards[done_mask == False]
+            rewards_forward[step, done_mask == False] = infos['reward_forward'][done_mask == False]
+            rewards_yaw[step, done_mask == False] = infos['yaw_reward'][done_mask == False]
+            rewards_drift[step, done_mask == False] = infos['drift penalty reward'][done_mask == False]
+            rewards_ctrl_cost[step, done_mask == False] = infos['ctrl_cost'][done_mask == False]
+            rewards_cfrc_cost[step, done_mask == False] = infos['cfrc_cost'][done_mask == False]
+
+           
 
             # multi_obj_reward = np.array([infos['reward_forward'], -infos['ctrl_cost']]).T  # TODO
             # multi_obj_rewards_full[step, done_mask == False] = multi_obj_reward[done_mask == False]
@@ -265,11 +277,27 @@ class AntWorld(World):
             # Optionally, break if all environments have terminated
             if np.all(done_mask):
                 break
+        
         final_rewards = np.sum(rewards_full, axis=0)
+        final_rewards_forward = np.sum(rewards_forward, axis=0)
+        final_rewards_yaw = np.sum(rewards_yaw, axis=0)
+        final_rewards_drift = np.sum(rewards_drift, axis=0)
+        final_rewards_ctrl_cost = np.sum(rewards_ctrl_cost, axis=0)
+        final_rewards_cfrc_cost = np.sum(rewards_cfrc_cost, axis=0)
+
+        infos_rewards = {
+            'reward_forward': np.mean(final_rewards_forward),
+            'yaw_reward': np.mean(final_rewards_yaw),
+            'drift penalty reward': np.mean(final_rewards_drift),
+            'ctrl_cost': np.mean(final_rewards_ctrl_cost),
+            'cfrc_cost': np.mean(final_rewards_cfrc_cost),
+        }
+
+
         # final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
         # final_multi_obj_rewards = np.sum(multi_obj_rewards_full, axis=0)
         envs.close()
-        return np.mean(final_rewards),infos
+        return np.mean(final_rewards),infos_rewards
     # , np.mean(final_multi_obj_rewards, axis=0)
 
     # def plot_rewards(self):
@@ -313,12 +341,33 @@ def run_EA_single(ea_single, world):
         # )
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
+        reward_forward = np.empty(len(pop))
+        yaw_reward = np.empty(len(pop))
+        drift_reward = np.empty(len(pop))
+        ctrl_cost = np.empty(len(pop))
+        cfrc_cost = np.empty(len(pop))
+
+
         for index, genotype in enumerate(pop):
             #print("genotype",len(genotype))
-            fit_ind,infos= world.evaluate_individual(genotype)
+            fit_ind,infos_reward= world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
+            reward_forward[index] = infos_reward['reward_forward']
+            yaw_reward[index] = infos_reward['yaw_reward']
+            drift_reward[index] = infos_reward['drift penalty reward']
+            ctrl_cost[index] = infos_reward['ctrl_cost']
+            cfrc_cost[index] = infos_reward['cfrc_cost']
 
-        ea_single.tell(pop, fitnesses_gen,infos)  # Le checkpoint est automatiquement géré ici
+
+        infos_reward = {
+            'reward_forward': reward_forward,
+            'yaw_reward': yaw_reward,
+            'drift penalty reward': drift_reward,
+            'ctrl_cost': ctrl_cost,
+            'cfrc_cost': cfrc_cost,
+        }
+
+        ea_single.tell(pop, fitnesses_gen,infos_reward)  # Le checkpoint est automatiquement géré ici
 
 
 
@@ -480,7 +529,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 100
+    CMAES_opts["num_generations"] = 5
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
@@ -520,7 +569,7 @@ def main():
     plot_all_rewards({
         'Best fitness': ea_single.full_best_so_far,
         'Mean fitness': ea_single.full_fitness_mean
-    }, 'best fitness and mean fitness num parent 20',save_path='combined_fitness_plot.png')
+    }, 'best fitness and mean fitness num parent 20',save_path='best_and_mean_plot.png')
 
 
     # %% Optimise multi-objective

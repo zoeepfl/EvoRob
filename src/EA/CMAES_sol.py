@@ -82,16 +82,21 @@ class CMAES_sol():
         print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n")
         self.cmaes.tell(solutions, -function_values)
 
+     
+
 
         #% Some bookkeeping
         self.full_fitness.append(function_values)
         self.full_fitness_mean.append(np.mean(function_values))
         self.full_fitness_max.append(np.max(function_values))
-        self.full_forward_fitness.append(np.max(infos['reward_forward']))
-        self.full_yaw_fitness.append(np.max(infos['yaw_reward']))
-        self.full_drift_fitness.append(np.max(infos['drift penalty reward']))
-        self.full_ctrl_cost_fitness.append(np.max(infos['ctrl_cost']))
-        self.full_cfrc_cost_fitness.append(np.max(infos['cfrc_cost']))
+        max_index = np.argmax(function_values)
+        print("fitness all",len(function_values))
+        print("reward forward",len(infos['reward_forward']))
+        self.full_forward_fitness.append(infos['reward_forward'][max_index])
+        self.full_yaw_fitness.append(infos['yaw_reward'][max_index])
+        self.full_drift_fitness.append(np.max(infos['drift penalty reward'][max_index]))
+        self.full_ctrl_cost_fitness.append(np.max(infos['ctrl_cost'][max_index]))
+        self.full_cfrc_cost_fitness.append(np.max(infos['cfrc_cost'][max_index]))
         self.full_x.append(solutions)
         self.f = function_values
         self.x = solutions
