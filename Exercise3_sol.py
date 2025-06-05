@@ -97,11 +97,17 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
+<<<<<<< HEAD
         self.n_steps = 10000
         self.controller = MLP.NNController(state_space, action_space)
+=======
+        self.n_steps = 1000
+        self.controller = MLP.NN_najaroController(state_space, action_space)
+>>>>>>> f8eca1d51c10078781a9838de0063745aa1ccef5
         self.n_weights = self.controller.n_params
+        print("Number of controller weights:", self.n_weights)
 
-        self.n_params = self.n_weights + 8
+        self.n_params = self.n_weights + 2 # 2 body parameters (leg length, ankle length)
         self.world_file = os.path.join(ROOT_DIR, "AntEnv.xml")
 
         self.joint_limits = [[-30, 30], [30, 70],
@@ -119,19 +125,24 @@ class AntWorld(World):
     def geno2pheno(self, genotype):
         control_weights = genotype[-self.n_weights:]
 
+
         # scale_weights = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
-        scale_weights = (genotype[:-self.n_weights] + 1.5) / 3 * (0.2 - 0.1) + 0.1
+        scale_weights = (genotype[:-self.n_weights] + 1.5) *0.2  # [0.1,0.5] m
+        #scale_weights = (genotype[:-self.n_weights] + 1.5) *0.4  # [0.2,1]m
+
+
+
 
         #body_params = (genotype[:-self.n_weights] + 1.5) / 5 * 0.5 + 0.1
         # body_params = ((genotype[:-self.n_weights]+ 1.5) / 3) * 1.4 + 0.1
         #body_params = ((genotype[:-self.n_weights] + 1) / 2) * (1.0 - 0.8) + 0.8
       # Un seul gène pour la longueur des jambes
-        leg_length_gene = scale_weights[0]
-        leg_length = ((leg_length_gene + 1.5) / 5) *0.5 +0.1  # map to [0.8, 1.0]
-
-        ankle_gene = scale_weights[1]
-        ankle_length = ((ankle_gene + 1) / 2) * (1.0 - 0.8) + 0.8
-
+       # print("scale weight",scale_weights[0])
+        leg_length= scale_weights[0]
+        
+        ankle_length = scale_weights[1]
+        #print("leg length",leg_length)
+        #print("ankle length",ankle_length)
 
         # Construction de body_params avec jambes = leg_length, chevilles = ankle_length
         body_params = np.array([
@@ -288,21 +299,27 @@ class AntWorld(World):
 #         ea_single.tell(pop, fitnesses_gen)
 
 def run_EA_single(ea_single, world):
-    start_gen = ea_single.current_gen + 1  # On continue après le checkpoint
+    if ea_single.current_gen == 0:
+        print("Starting new evolution run.")
+        start_gen = 0
+    else:
+        print(f"Continuing evolution from generation {ea_single.current_gen}.")
+        start_gen = ea_single.current_gen + 1  # On continue après le checkpoint
 
     for gen in range(start_gen, ea_single.n_gen):
         print(f"Generation {gen}")
         # % Defining the Robot environment in MuJoCo
-        generate_random_ant_world(
-            file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
-            n_rocks=500,  # ou fixe : n_rocks=50
-            area_size=20,
-            min_size=0.005,
-            max_size=0.4
-        )
+        # generate_random_ant_world(
+        #     file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
+        #     n_rocks=500,  # ou fixe : n_rocks=50
+        #     area_size=20,
+        #     min_size=0.005,
+        #     max_size=0.4
+        # )
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         for index, genotype in enumerate(pop):
+            #print("genotype",len(genotype))
             fit_ind,infos= world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
 
@@ -334,8 +351,8 @@ def generate_best_individual_video(world, video_name: str = 'EvoRob5_video.mp4')
         action = world.controller.get_action(observations)
         observations, rewards, terminated, truncated, info = env.step(action)
         rewards_list.append(rewards)
-        # if terminated:
-        #     break
+        if terminated:
+            break
     print(np.sum(rewards_list))
 
     import imageio
@@ -418,7 +435,7 @@ def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='f
 
     plt.show()
 
-def plot_all_rewards(reward_dict, save_path='combined_fitness_plot.png'):
+def plot_all_rewards(reward_dict,title, save_path='combined_fitness_plot.png'):
     """
     Plot multiple reward curves on the same plot.
 
@@ -445,7 +462,7 @@ def plot_all_rewards(reward_dict, save_path='combined_fitness_plot.png'):
 
     ax.set_xlabel('Generation')
     ax.set_ylabel('Reward')
-    ax.set_title('All Fitness Metrics Over Generations')
+    ax.set_title(title)
     ax.legend()
     ax.grid(True)
 
@@ -457,8 +474,8 @@ def plot_all_rewards(reward_dict, save_path='combined_fitness_plot.png'):
 
 def main():
     # %% Understanding the world
-    genotype = np.random.uniform(-1, 1, 953)  # 8 body parameters, 945 NN weights
     # for i in range(8):
+    #     genotype = np.random.uniform(-1, 1, 1676)  # 8 body parameters, 945 NN weights
     #     visualise_individual(genotype)
     world = AntWorld()
 
@@ -492,6 +509,9 @@ def main():
     plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
     plot_rewards(ea_single.full_ctrl_cost_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
     plot_rewards(ea_single.full_cfrc_cost_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
+    plot_rewards(ea_single.full_best_so_far, title='Best Fitness Over Generations',save_path='best_fitness_plot.png', data_path='full_best_so_far.csv')
+    plot_rewards(ea_single.full_fitness_mean, title='Mean Fitness Over Generations',save_path='mean_fitness_plot.png', data_path='full_fitness_mean.csv')
+
 
     plot_all_rewards({
     'Full fitness': ea_single.full_fitness_max,
@@ -500,7 +520,12 @@ def main():
     'Drift fitness (penalty)': ea_single.full_drift_fitness,
     'ctrl fitness': ea_single.full_ctrl_cost_fitness,
     'cfrc fitness': ea_single.full_cfrc_cost_fitness
-    })
+    },'All Fitness Metrics Over Generations')
+
+    plot_all_rewards({
+        'Best fitness': ea_single.full_best_so_far,
+        'Mean fitness': ea_single.full_fitness_mean
+    }, 'best fitness and mean fitness',save_path='combined_fitness_plot.png')
 
 
     # %% Optimise multi-objective
@@ -523,7 +548,7 @@ def main():
 
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "145", "x_best.npy"))
+    best_individual = np.load(os.path.join(results_dir, "9", "x_best.npy"))
 
     points, connectivity_mat = world.geno2pheno(best_individual)
     robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)

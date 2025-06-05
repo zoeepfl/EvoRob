@@ -25,7 +25,7 @@ class CMAES_sol():
         self.max = opts["max"]
 
         self.current_gen = 0
-        self.current_mean = self.initialise_x0(n_params)
+        self.current_mean = self.initialise_x0_bis(n_params)
         self.current_sigma = opts["mutation_sigma"]
         self.f_new = np.empty(self.n_pop)
 
@@ -35,12 +35,14 @@ class CMAES_sol():
         self.directory_name = output_dir
         self.full_x = []
         self.full_fitness = []
+        self.full_fitness_mean = []
         self.full_fitness_max= []
         self.full_forward_fitness = []
         self.full_yaw_fitness = []
         self.full_drift_fitness = []
         self.full_ctrl_cost_fitness = []
         self.full_cfrc_cost_fitness = []
+        self.full_best_so_far = []
         self.x_best_so_far = None
         self.f_best_so_far = -np.inf
         self.x = [None] * self.n_pop
@@ -68,6 +70,7 @@ class CMAES_sol():
 
         #% Some bookkeeping
         self.full_fitness.append(function_values)
+        self.full_fitness_mean.append(np.mean(function_values))
         self.full_fitness_max.append(np.max(function_values))
         self.full_forward_fitness.append(np.max(infos['reward_forward']))
         self.full_yaw_fitness.append(np.max(infos['yaw_reward']))
@@ -81,6 +84,7 @@ class CMAES_sol():
         if np.max(function_values) > self.f_best_so_far:
             best_index = np.argmax(function_values)
             self.f_best_so_far = function_values[best_index]
+            self.full_best_so_far.append(self.f_best_so_far)
             self.x_best_so_far = solutions[best_index]
 
         if self.current_gen % 5 == 0:
@@ -94,6 +98,13 @@ class CMAES_sol():
 
     def initialise_x0(self, num_parameters):
         mean_vector = np.random.uniform(low=self.min, high=self.max, size=num_parameters)
+        return mean_vector
+    
+    def initialise_x0_bis(self, num_parameters):
+        """
+        Initialise le vecteur moyen x0 pour CMA-ES.
+        """
+        mean_vector = np.zeros(num_parameters)
         return mean_vector
 
 
