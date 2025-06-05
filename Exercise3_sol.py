@@ -97,7 +97,7 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
-        self.n_steps = 1000
+        self.n_steps = 500 
         self.controller = MLP.NN_najaroController(state_space, action_space)
         self.n_weights = self.controller.n_params
         print("Number of controller weights:", self.n_weights)
@@ -520,7 +520,7 @@ def main():
     plot_all_rewards({
         'Best fitness': ea_single.full_best_so_far,
         'Mean fitness': ea_single.full_fitness_mean
-    }, 'best fitness and mean fitness',save_path='combined_fitness_plot.png')
+    }, 'best fitness and mean fitness num parent 20',save_path='combined_fitness_plot.png')
 
 
     # %% Optimise multi-objective

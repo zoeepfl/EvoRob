@@ -14,6 +14,7 @@ CMAES_opts = {
     "max": 4,
     "num_generations": 100,
     "mutation_sigma": 0.3,
+    "num_parents": 10,  # Nombre de parents pour la sélection
 }
 
 class CMAES_sol():
@@ -48,12 +49,26 @@ class CMAES_sol():
         self.x = [None] * self.n_pop
         self.f = [-np.inf] * self.n_pop
 
+        assert opts["num_parents"] <= n_pop, f"num_parents ({opts['num_parents']}) must be <= population size ({n_pop})"
+
+
+        # def load_cmeas(self):
+        #     params = {
+        #         'popsize': self.n_pop,
+        #         'bounds': (
+        #             [self.min] * self.n_params,  # lower bounds per dimension
+        #             [self.max] * self.n_params,  # upper bounds per dimension
+        #         ),
+        #     }
+        #     return cma.CMAEvolutionStrategy(self.current_mean, self.current_sigma, inopts=params)
+
     def load_cmeas(self):
         params = {
             'popsize': self.n_pop,
+            'CMA_mu': CMAES_opts.get("num_parents", self.n_pop // 2),  # <-- correction ici
             'bounds': (
-                [self.min] * self.n_params,  # lower bounds per dimension
-                [self.max] * self.n_params,  # upper bounds per dimension
+                [self.min] * self.n_params,
+                [self.max] * self.n_params,
             ),
         }
         return cma.CMAEvolutionStrategy(self.current_mean, self.current_sigma, inopts=params)
@@ -84,8 +99,9 @@ class CMAES_sol():
         if np.max(function_values) > self.f_best_so_far:
             best_index = np.argmax(function_values)
             self.f_best_so_far = function_values[best_index]
-            self.full_best_so_far.append(self.f_best_so_far)
             self.x_best_so_far = solutions[best_index]
+            
+        self.full_best_so_far.append(self.f_best_so_far)
 
         if self.current_gen % 5 == 0:
             print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n"
