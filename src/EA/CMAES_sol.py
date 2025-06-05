@@ -100,11 +100,11 @@ class CMAES_sol():
             best_index = np.argmax(function_values)
             self.f_best_so_far = function_values[best_index]
             self.x_best_so_far = solutions[best_index]
-            
+
         self.full_best_so_far.append(self.f_best_so_far)
 
         if self.current_gen % 5 == 0:
-            print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n"
+            print(f"Generation et best fitness {self.current_gen}:\t{self.f_best_so_far}\n"
                   f"Mean fitness:\t{self.f.mean()} +- {self.f.std()}\n"
                   )
 
