@@ -127,7 +127,7 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         x_velocity, y_velocity = xy_velocity
 
         # forward_reward = x_velocity * self._forward_reward_weight
-        forward_reward = np.clip(x_velocity, 0.2, 0.8) * 2
+        forward_reward = x_velocity * 2
         healthy_reward = 1
         ctrl_cost = np.linalg.norm(action)**2 * self._ctrl_cost_weight
         cfrc_cost = np.linalg.norm( self.data.cfrc_ext[1:])**2 * self._cfrc_cost_weight
@@ -169,12 +169,27 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         # Check for NaN, Inf, or huge values
         qacc = self.data.qacc
         if np.any(np.isnan(qacc)) or np.any(np.isinf(qacc)) or np.any(np.abs(qacc) > 1e6):
+            print("too huge")
             DOF = np.argwhere((np.isnan(qacc)) + (np.isinf(qacc)) + (np.abs(qacc) > 1e6)).squeeze()[0]
             print(ValueError(f'MuJoCo Warning: Nan, Inf or huge value in QACC at DOF {DOF}'))
             terminated = True
-        if self.data.qpos[2] < 0.2 or self.data.qpos[2] > 1.0:
+
+        if self.data.qpos[2] < 0.1 or self.data.qpos[2] > 1.2:
+            # print("hauteur",self.data.qpos[2])
+            # print("hors bornes en z")
             terminated = True
+
         if np.isinf(observation).any():
+            print("infini")
+            terminated = True
+
+        from scipy.spatial.transform import Rotation as R
+        quat_mujoco = self.data.qpos[3:7]  # [w, x, y, z] format MuJoCo
+        quat_scipy = [quat_mujoco[1], quat_mujoco[2], quat_mujoco[3], quat_mujoco[0]]  # x, y, z, w
+        z_axis = R.from_quat(quat_scipy).apply([0, 0, 1])
+        if z_axis[2] < 0.5:
+            #print("z_axis[2] : ", z_axis[2])
+            #print("Ant retourné ou trop incliné")
             terminated = True
 
         self.previous_state = observation
