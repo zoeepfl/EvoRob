@@ -48,7 +48,7 @@ def visualize_genome(genome_path=None, generation=None, results_dir="results/Ant
 if __name__ == "__main__":
     # Option 1 : Visualiser par génération
     for i in range(10):
-        visualize_genome(generation=143)
+        visualize_genome(generation=99)
 
     # Option 2 : Visualiser un génome précis
     # visualize_genome(genome_path="results/Ant_custom/single/35/x_best.npy")

@@ -1,5 +1,10 @@
 results/*
+reward_data/*
+
 *.mp4
+*.png
+*.csv
+*.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

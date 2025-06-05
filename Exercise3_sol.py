@@ -35,7 +35,7 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.
     if seed is not None:
         random.seed(seed)
     if n_rocks is None:
-        n_rocks = random.randint(300, 500)
+        n_rocks = random.randint(200, 400)
 
     mjcf = Element("mujoco", model="tensegrity default scene")
 
@@ -97,7 +97,7 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
-        self.n_steps = 500 
+        self.n_steps = 5000 
         self.controller = MLP.NN_najaroController(state_space, action_space)
         self.n_weights = self.controller.n_params
         print("Number of controller weights:", self.n_weights)
@@ -480,7 +480,7 @@ def main():
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 15
+    CMAES_opts["num_generations"] = 100
     CMAES_opts["mutation_sigma"] = 0.33
 
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
