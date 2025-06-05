@@ -97,13 +97,8 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
-<<<<<<< HEAD
-        self.n_steps = 10000
-        self.controller = MLP.NNController(state_space, action_space)
-=======
         self.n_steps = 1000
         self.controller = MLP.NN_najaroController(state_space, action_space)
->>>>>>> f8eca1d51c10078781a9838de0063745aa1ccef5
         self.n_weights = self.controller.n_params
         print("Number of controller weights:", self.n_weights)
 
