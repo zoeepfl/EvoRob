@@ -1,5 +1,6 @@
 import os
 from typing import Dict
+import pickle
 
 import numpy as np
 
@@ -166,9 +167,21 @@ class ES:
             sigma = sigma_limit
         return sigma
 
+    # def save_checkpoint(self):
+    #     curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
+    #     os.makedirs(curr_gen_path, exist_ok=True)
+    #     np.save(os.path.join(self.directory_name, 'full_f'), np.array(self.full_fitness))
+    #     np.save(os.path.join(self.directory_name, 'full_x'), np.array(self.full_x))
+    #     np.save(os.path.join(curr_gen_path, 'f_best'), np.array(self.f_best_so_far))
+    #     np.save(os.path.join(curr_gen_path, 'x_best'), np.array(self.x_best_so_far))
+    #     np.save(os.path.join(curr_gen_path, 'x'), np.array(self.x))
+    #     np.save(os.path.join(curr_gen_path, 'f'), np.array(self.f))
+
     def save_checkpoint(self):
         curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
+        print(f"Saving checkpoint to {curr_gen_path}")
         os.makedirs(curr_gen_path, exist_ok=True)
+
         np.save(os.path.join(self.directory_name, 'full_f'), np.array(self.full_fitness))
         np.save(os.path.join(self.directory_name, 'full_x'), np.array(self.full_x))
         np.save(os.path.join(curr_gen_path, 'f_best'), np.array(self.f_best_so_far))
@@ -176,17 +189,46 @@ class ES:
         np.save(os.path.join(curr_gen_path, 'x'), np.array(self.x))
         np.save(os.path.join(curr_gen_path, 'f'), np.array(self.f))
 
-    def load_checkpoint(self):
-        dir_path = search_file_list(self.directory_name, 'f_best.npy')
-        assert len(dir_path) > 0;
-        "No files are here, check the directory_name!!"
+        #Sauvegarde via pickle de l'objet complet
+        with open(os.path.join(curr_gen_path, 'es.pkl'), 'wb') as f:
+            pickle.dump(self, f)
 
-        self.current_gen = int(dir_path[-1].split('/')[-2])
-        curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
+        print(f"Checkpoint saved to {curr_gen_path}")
 
-        self.full_fitness = np.load(os.path.join(self.directory_name, 'full_f.npy'))
-        self.full_x = np.load(os.path.join(self.directory_name, 'full_x.npy'))
-        self.f_best_so_far = np.load(os.path.join(curr_gen_path, 'f_best.npy'))
-        self.x_best_so_far = np.load(os.path.join(curr_gen_path, 'x_best.npy'))
-        self.x = np.load(os.path.join(curr_gen_path, 'x.npy'))
-        self.f = np.load(os.path.join(curr_gen_path, 'f.npy'))
+    @staticmethod
+    def load_checkpoint(directory_name, gen_id=None):
+        import os
+        import pickle
+        from src.utils.Filesys import search_file_list
+
+        if gen_id is not None:
+            checkpoint_path = os.path.join(directory_name, str(gen_id), 'es.pkl')
+            if not os.path.isfile(checkpoint_path):
+                raise FileNotFoundError(f"Aucun fichier de checkpoint trouvé pour la génération {gen_id}")
+        else:
+            dir_path = search_file_list(directory_name, 'es.pkl')
+            if len(dir_path) == 0:
+                raise FileNotFoundError("Aucun checkpoint ES trouvé dans le dossier spécifié.")
+            checkpoint_path = dir_path[-1]  # dernier fichier trouvé
+
+        with open(checkpoint_path, 'rb') as f:
+            es = pickle.load(f)
+
+        print(f"Checkpoint chargé depuis {checkpoint_path}")
+        return es
+
+
+    # def load_checkpoint(self):
+    #     dir_path = search_file_list(self.directory_name, 'f_best.npy')
+    #     assert len(dir_path) > 0;
+    #     "No files are here, check the directory_name!!"
+
+    #     self.current_gen = int(dir_path[-1].split('/')[-2])
+    #     curr_gen_path = os.path.join(self.directory_name, str(self.current_gen))
+
+    #     self.full_fitness = np.load(os.path.join(self.directory_name, 'full_f.npy'))
+    #     self.full_x = np.load(os.path.join(self.directory_name, 'full_x.npy'))
+    #     self.f_best_so_far = np.load(os.path.join(curr_gen_path, 'f_best.npy'))
+    #     self.x_best_so_far = np.load(os.path.join(curr_gen_path, 'x_best.npy'))
+    #     self.x = np.load(os.path.join(curr_gen_path, 'x.npy'))
+    #     self.f = np.load(os.path.join(curr_gen_path, 'f.npy'))
