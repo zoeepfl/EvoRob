@@ -540,19 +540,19 @@ def plot_all_rewards(reward_dict, title, save_path='combined_fitness_plot.png'):
 
 def main():
     # %% Understanding the world
-    # for i in range(8):
-    #     genotype = np.random.uniform(-1, 1, 1676)  # 8 body parameters, 945 NN weights
-    #     visualise_individual(genotype)
+    for i in range(8):
+        genotype = np.random.uniform(-1, 1, 1676)  # 8 body parameters, 945 NN weights
+        visualise_individual(genotype)
     world = AntWorld()
 
     n_parameters = world.n_params
-    population_size = 50
+    population_size = 250
 
     ########ES#########
     ES_opts["min"] = -1
     ES_opts["max"] = 1
     ES_opts["num_parents"] = 20
-    ES_opts["num_generations"] = 10
+    ES_opts["num_generations"] = 20
     ES_opts["mutation_sigma"] = 0.33
     ES_opts["sigma_limit"] = 0.1
 
