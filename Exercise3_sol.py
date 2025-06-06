@@ -444,13 +444,14 @@ def visualise_individual(genotype):
     print("Reward total:", np.sum(rewards_list))
 
 
-def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='full_fitness_max.csv'):
+def plot_rewards(value, title, ax=None, save_path='fitness_plot.png', data_path='full_fitness_max.csv'):
     """
-    Plot the rewards over generations with lines and points, and save the plot and data in the 'reward_data' folder.
+    Plot the rewards over generations with lines and points, and save the plot, the data, and the figure object.
     """
     import matplotlib.pyplot as plt
     import numpy as np
     import os
+    import pickle
 
     # ✅ Créer le dossier reward_data s'il n'existe pas
     output_dir = 'reward_data'
@@ -459,9 +460,13 @@ def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='f
     # ✅ Mettre à jour les chemins avec le dossier
     save_path = os.path.join(output_dir, save_path)
     data_path = os.path.join(output_dir, data_path)
+    fig_path = os.path.splitext(save_path)[0] + '.pkl'  # même nom que l'image, extension .pkl
 
+    # ✅ Création de la figure si besoin
     if ax is None:
         fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
 
     generations = range(len(value))
     ax.plot(generations, value, label='Fitness', marker='o', linestyle='-', color='blue')
@@ -471,33 +476,42 @@ def plot_rewards(value,title,ax=None, save_path='fitness_plot.png', data_path='f
     ax.set_title(title)
     ax.legend()
 
-    # ✅ Sauvegarder le graphique
+    # ✅ Sauvegarder le graphique en image
     plt.savefig(save_path)
     print(f"Plot saved to {save_path}")
 
-    # ✅ Sauvegarder les données
+    # ✅ Sauvegarder les données en CSV
     np.savetxt(data_path, value, delimiter=',')
     print(f"Fitness data saved to {data_path}")
 
+    # ✅ Sauvegarder la figure complète en .pkl
+    with open(fig_path, 'wb') as f:
+        pickle.dump(fig, f)
+    print(f"Figure object saved to {fig_path}")
+
     plt.show()
 
-def plot_all_rewards(reward_dict,title, save_path='combined_fitness_plot.png'):
+
+def plot_all_rewards(reward_dict, title, save_path='combined_fitness_plot.png'):
     """
-    Plot multiple reward curves on the same plot.
+    Plot multiple reward curves on the same plot and save both as image and pickled figure.
 
     Parameters:
         reward_dict (dict): Dictionary with title as key and list/array as value.
-        save_path (str): Name of the file to save the plot.
+        save_path (str): Name of the file to save the plot image.
     """
     import matplotlib.pyplot as plt
     import numpy as np
     import os
+    import pickle
 
     # ✅ Créer le dossier reward_data s'il n'existe pas
     output_dir = 'reward_data'
     os.makedirs(output_dir, exist_ok=True)
 
-    save_path = os.path.join(output_dir, save_path)
+    # ✅ Définir les chemins complets
+    image_path = os.path.join(output_dir, save_path)
+    fig_path = os.path.join(output_dir, os.path.splitext(save_path)[0] + '.pkl')
 
     # ✅ Création du plot
     fig, ax = plt.subplots()
@@ -512,11 +526,17 @@ def plot_all_rewards(reward_dict,title, save_path='combined_fitness_plot.png'):
     ax.legend()
     ax.grid(True)
 
-    plt.savefig(save_path)
-    print(f"Combined plot saved to {save_path}")
+    # ✅ Sauvegarder le plot en image
+    plt.savefig(image_path)
+
+    # ✅ Sauvegarder la figure en objet pickle
+    with open(fig_path, 'wb') as f:
+        pickle.dump(fig, f)
+
+    print(f"Combined plot saved to {image_path}")
+    print(f"Figure object saved to {fig_path}")
+
     plt.show()
-
-
 
 def main():
     # %% Understanding the world
@@ -526,22 +546,39 @@ def main():
     world = AntWorld()
 
     n_parameters = world.n_params
-    population_size = 250
+    population_size = 50
 
     ########ES#########
-
-
-
     ES_opts["min"] = -1
     ES_opts["max"] = 1
     ES_opts["num_parents"] = 20
-    ES_opts["num_generations"] = 5
+    ES_opts["num_generations"] = 10
     ES_opts["mutation_sigma"] = 0.33
     ES_opts["sigma_limit"] = 0.1
 
-    es_single = ES(population_size, n_parameters, ES_opts)
     results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single_es')
-    
+
+    ##decommenter pour lancer un nouveau run sans checkpoint
+    es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
+
+
+
+    #decomenter pour charger un checkpoint
+    # try:
+    #     es_single = ES.load_checkpoint(results_dir, gen_id=4)
+    #     es_single.n_pop = population_size
+    #     es_single.n_params = n_parameters
+    #     es_single.n_gen = ES_opts["num_generations"]
+    #     es_single.n_parents = ES_opts["num_parents"]
+    #     es_single.current_sigma = ES_opts["mutation_sigma"]
+    #     es_single.sigma_limit = ES_opts["sigma_limit"]
+    #     es_single.min = ES_opts["min"]
+    #     es_single.max = ES_opts["max"]
+    #     print(f"Checkpoint chargé depuis génération {es_single.current_gen}")
+    # except ...:
+    #     es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
+
+
     run_EA_single(es_single, world)
 
 
@@ -554,7 +591,7 @@ def main():
     CMAES_opts["num_generations"] = 5
     CMAES_opts["mutation_sigma"] = 0.33
 
-    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
+    #results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
 
     ea_single = CMAES_sol(population_size, n_parameters, CMAES_opts, results_dir)
 
@@ -566,6 +603,7 @@ def main():
     #     print("Aucun checkpoint trouvé. Nouveau run.")
 
     # #run_EA_single(ea_single, world)
+    
     # #world.plot_rewards()
     # print("full fitness",len(ea_single.full_fitness))
     # print("max fitness:", len(ea_single.full_fitness_max))
@@ -617,7 +655,7 @@ def main():
     plot_all_rewards({
         'ES Best fitness': es_single.full_best_so_far,
         'ES Mean fitness': es_single.full_fitness_mean
-    }, 'ES Best and Mean Fitness Over Generations', save_path='es_best_and_mean_plot.png')
+    }, 'ES Best and Mean Fitness Over Generations initialisation ', save_path='es_best_and_mean_plot.png')
 
     # %% Optimise multi-objective
     # # TODO implement the NSGAII
@@ -639,7 +677,7 @@ def main():
 
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "9", "x_best.npy"))
+    best_individual = np.load(os.path.join(results_dir, "4", "x_best.npy"))
 
     points, connectivity_mat = world.geno2pheno(best_individual)
     robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)
@@ -655,7 +693,7 @@ def main():
     with open(world.world_file, "w") as f:
         f.write(world_xml)
 
-    generate_best_individual_video(world,'test_3.mp4')
+    generate_best_individual_video(world,'test_4.mp4')
 
 
 if __name__ == "__main__":
