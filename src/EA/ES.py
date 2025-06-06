@@ -16,8 +16,7 @@ ES_opts = {
 
 
 class ES:
-
-    def __init__(self, n_pop, n_params, opts: Dict=ES_opts, output_dir: str="./results/ES"):
+    def __init__(self, n_pop, n_params, opts: Dict = ES_opts, output_dir: str = "./results/ES"):
         """
         Evolutionary Strategy [INCOMPLETE]
 
@@ -26,6 +25,7 @@ class ES:
         :param opts: algorithm options
         :param output_dir: output directory Default = "./results/ES"
         """
+        # % EA options
         self.n_params = n_params
         self.n_pop = n_pop
         self.n_gen = opts["num_generations"]
@@ -34,20 +34,30 @@ class ES:
         self.max = opts["max"]
 
         self.current_gen = 0
-        self.current_mean = self.initialise_x0()  #TODO
+        self.current_mean = [(self.min + self.max) / 2]*self.n_params
         self.current_sigma = opts["mutation_sigma"]
         self.sigma_limit = opts["sigma_limit"]
 
-        #% bookkeeping
+        # % bookkeeping
         self.directory_name = output_dir
         self.full_x = []
         self.full_fitness = []
+        self.full_fitness_mean = []
+        self.full_fitness_max= []
+        self.full_forward_fitness = []
+        self.full_yaw_fitness = []
+        self.full_drift_fitness = []
+        self.full_ctrl_cost_fitness = []
+        self.full_cfrc_cost_fitness = []
+        self.full_best_so_far = []
+
         self.x_best_so_far = None
         self.f_best_so_far = -np.inf
         self.x = None
         self.f = None
 
     def ask(self):
+        print("ask es")
         if self.current_gen==0:
             new_population = self.initialise_x0()
         else:
@@ -55,16 +65,29 @@ class ES:
         new_population = np.clip(new_population, self.min, self.max)
         return new_population
 
-    def tell(self, solutions, function_values, save_checkpoint=True):
+    def tell(self, solutions, function_values,infos, save_checkpoint=True):
+        print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n")
+
         parents_population, parents_fitness = self.sort_and_select_parents(
             solutions, function_values, self.n_parents
         )
         self.current_mean = self.update_population_mean(parents_population, parents_fitness)
-        self.current_sigma = self.update_sigma()
+        self.current_sigma = self.exp_decay()
 
 
         #% Some bookkeeping
         self.full_fitness.append(function_values)
+        self.full_fitness_mean.append(np.mean(function_values))
+        self.full_fitness_max.append(np.max(function_values))
+        max_index = np.argmax(function_values)
+        print("fitness all",len(function_values))
+        print("reward forward",len(infos['reward_forward']))
+        self.full_forward_fitness.append(infos['reward_forward'][max_index])
+        self.full_yaw_fitness.append(infos['yaw_reward'][max_index])
+        self.full_drift_fitness.append(np.max(infos['drift penalty reward'][max_index]))
+        self.full_ctrl_cost_fitness.append(np.max(infos['ctrl_cost'][max_index]))
+        self.full_cfrc_cost_fitness.append(np.max(infos['cfrc_cost'][max_index]))
+
         self.full_x.append(solutions)
         self.x = parents_population
         self.f = parents_fitness
@@ -74,57 +97,73 @@ class ES:
             self.f_best_so_far = function_values[best_index]
             self.x_best_so_far = solutions[best_index]
 
+        self.full_best_so_far.append(self.f_best_so_far)
+
+
         if self.current_gen % 5 == 0:
-            print(f"Generation {self.current_gen}:\t{self.f_best_so_far}\n"
-                  f"Mean fitness:\t{self.f.mean()} +- {self.f.std()}\n"
+            print(f"Best fitness in generation {self.current_gen}: {self.f_best_so_far}\n"
+                  f"Mean pop fitness: {self.f.mean()} +- {self.f.std()}\n"
                   f"Sigma: {self.current_sigma} \n"
+                  # f"Genome: {self.x_best_so_far}\n"
                   )
 
         if save_checkpoint:
             self.save_checkpoint()
         self.current_gen += 1
 
-    def initialise_x0(self,):
-        #TODO
-        mean_vector = ...
+    def exp_decay(self):
+        sigma = self.current_sigma * 0.95
+        return np.max((self.sigma_limit, sigma))
+
+    def initialise_x0(self):
+        mean_vector = np.random.uniform(low=self.min, high=self.max, size=(self.n_pop, self.n_params))
         return mean_vector
 
     def generate_mutated_offspring(self, population_size):
-        # TODO
-        population = ...
+        # Duplicate mean candidate along y-dim
+        population = np.tile(self.current_mean, (population_size, 1))
 
         # Compute multivariate Gaussian noise
-        mutation = ...
+        num_parameters = len(self.current_mean)
+        perturbation = np.random.normal(
+            loc=0.0, scale=1.0, size=(population_size, num_parameters)
+        )
 
         # Compute offspring
-        mutated_population = ...
+        mutated_population = population + self.current_sigma * perturbation
 
         return mutated_population
 
     def sort_and_select_parents(self, population, fitness, num_parents):
-        # TODO
-        parent_population = ...
-        parent_fitness = ...
+        sorted_indices = np.argsort(fitness)[::-1]
+        sorted_indices = sorted_indices[0:num_parents]
+
+        parent_population = population[sorted_indices]
+        parent_fitness = fitness[sorted_indices]
+
         return parent_population, parent_fitness
 
     def update_population_mean(self, parent_population, parent_fitness):
-        # TODO
         # Normalise parent fitness scores
-        normed_parents_fitness = ...
-
+        normed_fitness = (parent_fitness - parent_fitness[-1])/(parent_fitness[0]-parent_fitness[-1])
+        normed_parents_fitness = normed_fitness / np.sum(normed_fitness)
         # Compute population weighted to the normed fitness scores
-        weighted_parents_population = ...
-
-        # Calculate the sum of weighted parents population
-        updated_mean_vector = ...
-
+        weight = np.outer(normed_parents_fitness, np.ones((1, parent_population.shape[1])))
+        weighted_parents_population = np.multiply(
+            parent_population, weight
+        )  # hadamard product
+        # Calculate mean of weighted parents population along y-axis
+        updated_mean_vector = np.sum(weighted_parents_population, axis=0)
         return updated_mean_vector
 
     def update_sigma(self):
-        #TODO
-        minimum_sigma = ...
+        sigma_limit = self.sigma_limit
         sigma = self.current_sigma
         param_size = self.n_params
+        tau = 1 / (np.sqrt(param_size))
+        sigma = sigma * np.exp(tau * np.random.normal())
+        if sigma < sigma_limit:
+            sigma = sigma_limit
         return sigma
 
     def save_checkpoint(self):
@@ -151,4 +190,3 @@ class ES:
         self.x_best_so_far = np.load(os.path.join(curr_gen_path, 'x_best.npy'))
         self.x = np.load(os.path.join(curr_gen_path, 'x.npy'))
         self.f = np.load(os.path.join(curr_gen_path, 'f.npy'))
-

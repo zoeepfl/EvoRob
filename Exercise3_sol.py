@@ -1,4 +1,5 @@
 from src.EA.CMAES_sol import CMAES_sol, CMAES_opts
+from src.EA.ES import ES, ES_opts
 from src.EA.NSGA_sol import NSGAII_sol, NSGA_opts
 from src.world.World import World
 from src.world.robot.controllers import MLP
@@ -349,6 +350,7 @@ def run_EA_single(ea_single, world):
 
 
         for index, genotype in enumerate(pop):
+            print(f"Evaluating individual {index + 1}/{len(pop)}")
             #print("genotype",len(genotype))
             fit_ind,infos_reward= world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
@@ -524,8 +526,28 @@ def main():
     world = AntWorld()
 
     n_parameters = world.n_params
-
     population_size = 250
+
+    ########ES#########
+
+
+
+    ES_opts["min"] = -1
+    ES_opts["max"] = 1
+    ES_opts["num_parents"] = 20
+    ES_opts["num_generations"] = 5
+    ES_opts["mutation_sigma"] = 0.33
+    ES_opts["sigma_limit"] = 0.1
+
+    es_single = ES(population_size, n_parameters, ES_opts)
+    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single_es')
+    
+    run_EA_single(es_single, world)
+
+
+
+
+    #######CMAES################
     CMAES_opts["min"] = -1
     CMAES_opts["max"] = 1
     CMAES_opts["num_parents"] = 20
@@ -543,34 +565,59 @@ def main():
     # except AssertionError:
     #     print("Aucun checkpoint trouvé. Nouveau run.")
 
-    run_EA_single(ea_single, world)
-    #world.plot_rewards()
-    print("full fitness",len(ea_single.full_fitness))
-    print("max fitness:", len(ea_single.full_fitness_max))
-    plot_rewards(ea_single.full_fitness_max,'full fitness',save_path='fitness_max_plot.png', data_path='full_fitness_max.csv')
-    plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
-    plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
-    plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
-    plot_rewards(ea_single.full_ctrl_cost_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
-    plot_rewards(ea_single.full_cfrc_cost_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
-    plot_rewards(ea_single.full_best_so_far, title='Best Fitness Over Generations',save_path='best_fitness_plot.png', data_path='full_best_so_far.csv')
-    plot_rewards(ea_single.full_fitness_mean, title='Mean Fitness Over Generations',save_path='mean_fitness_plot.png', data_path='full_fitness_mean.csv')
+    # #run_EA_single(ea_single, world)
+    # #world.plot_rewards()
+    # print("full fitness",len(ea_single.full_fitness))
+    # print("max fitness:", len(ea_single.full_fitness_max))
+    # plot_rewards(ea_single.full_fitness_max,'full fitness',save_path='fitness_max_plot.png', data_path='full_fitness_max.csv')
+    # plot_rewards(ea_single.full_forward_fitness,'forward fitness',save_path='fitness_forward_plot.png', data_path='full_forward_fitness.csv')
+    # plot_rewards(ea_single.full_yaw_fitness,'yaw fitness',save_path='fitness_yaw_plot.png', data_path='full_yaw_fitness.csv')
+    # plot_rewards(ea_single.full_drift_fitness,'drift fitness (penalty)',save_path='fitness_drift_plot.png', data_path='full_drift_fitness.csv')
+    # plot_rewards(ea_single.full_ctrl_cost_fitness,'ctrl fitness',save_path='fitness_ctrl_plot.png', data_path='full_ctrl_fitness.csv')
+    # plot_rewards(ea_single.full_cfrc_cost_fitness,'cfrc fitness',save_path='fitness_cfrc_plot.png', data_path='full_cfrc_fitness.csv')
+    # plot_rewards(ea_single.full_best_so_far, title='Best Fitness Over Generations',save_path='best_fitness_plot.png', data_path='full_best_so_far.csv')
+    # plot_rewards(ea_single.full_fitness_mean, title='Mean Fitness Over Generations',save_path='mean_fitness_plot.png', data_path='full_fitness_mean.csv')
 
+
+    # plot_all_rewards({
+    # 'Full fitness': ea_single.full_fitness_max,
+    # 'Forward fitness': ea_single.full_forward_fitness,
+    # 'Yaw fitness': ea_single.full_yaw_fitness,
+    # 'Drift fitness (penalty)': ea_single.full_drift_fitness,
+    # 'ctrl fitness': ea_single.full_ctrl_cost_fitness,
+    # 'cfrc fitness': ea_single.full_cfrc_cost_fitness
+    # },'All Fitness Metrics Over Generations')
+
+    # plot_all_rewards({
+    #     'Best fitness': ea_single.full_best_so_far,
+    #     'Mean fitness': ea_single.full_fitness_mean
+    # }, 'best fitness and mean fitness num parent 20',save_path='best_and_mean_plot.png')
+
+
+
+    # Plot ES results   
+    plot_rewards(es_single.full_fitness_max, 'ES Full Fitness', save_path='es_fitness_max_plot.png', data_path='es_full_fitness_max.csv')
+    plot_rewards(es_single.full_forward_fitness, 'ES Forward Fitness', save_path='es_fitness_forward_plot.png', data_path='es_full_forward_fitness.csv')
+    plot_rewards(es_single.full_yaw_fitness, 'ES Yaw Fitness', save_path='es_fitness_yaw_plot.png', data_path='es_full_yaw_fitness.csv')
+    plot_rewards(es_single.full_drift_fitness, 'ES Drift Fitness (penalty)', save_path='es_fitness_drift_plot.png', data_path='es_full_drift_fitness.csv')
+    plot_rewards(es_single.full_ctrl_cost_fitness, 'ES Ctrl Fitness', save_path='es_fitness_ctrl_plot.png', data_path='es_full_ctrl_fitness.csv')
+    plot_rewards(es_single.full_cfrc_cost_fitness, 'ES Cfrc Fitness', save_path='es_fitness_cfrc_plot.png', data_path='es_full_cfrc_fitness.csv')
+    plot_rewards(es_single.full_best_so_far, title='ES Best Fitness Over Generations', save_path='es_best_fitness_plot.png', data_path='es_full_best_so_far.csv')
+    plot_rewards(es_single.full_fitness_mean, title='ES Mean Fitness Over Generations', save_path='es_mean_fitness_plot.png', data_path='es_full_fitness_mean.csv')
 
     plot_all_rewards({
-    'Full fitness': ea_single.full_fitness_max,
-    'Forward fitness': ea_single.full_forward_fitness,
-    'Yaw fitness': ea_single.full_yaw_fitness,
-    'Drift fitness (penalty)': ea_single.full_drift_fitness,
-    'ctrl fitness': ea_single.full_ctrl_cost_fitness,
-    'cfrc fitness': ea_single.full_cfrc_cost_fitness
-    },'All Fitness Metrics Over Generations')
+        'ES Full fitness': es_single.full_fitness_max,
+        'ES Forward fitness': es_single.full_forward_fitness,
+        'ES Yaw fitness': es_single.full_yaw_fitness,
+        'ES Drift fitness (penalty)': es_single.full_drift_fitness,
+        'ES ctrl fitness': es_single.full_ctrl_cost_fitness,
+        'ES cfrc fitness': es_single.full_cfrc_cost_fitness
+    },'ES All Fitness Metrics Over Generations', save_path='es_all_fitness_plot.png')
 
     plot_all_rewards({
-        'Best fitness': ea_single.full_best_so_far,
-        'Mean fitness': ea_single.full_fitness_mean
-    }, 'best fitness and mean fitness num parent 20',save_path='best_and_mean_plot.png')
-
+        'ES Best fitness': es_single.full_best_so_far,
+        'ES Mean fitness': es_single.full_fitness_mean
+    }, 'ES Best and Mean Fitness Over Generations', save_path='es_best_and_mean_plot.png')
 
     # %% Optimise multi-objective
     # # TODO implement the NSGAII
