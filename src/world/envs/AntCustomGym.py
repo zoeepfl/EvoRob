@@ -149,7 +149,8 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         drift_penalty = -1 * abs(drift)
 
         #TODO
-        reward = healthy_reward + forward_reward - ctrl_cost - cfrc_cost + reward_yaw + drift_penalty
+        reward = healthy_reward + forward_reward + reward_yaw
+        # reward = healthy_reward + forward_reward - ctrl_cost - cfrc_cost + reward_yaw + drift_penalty
         observation = self._get_obs()
 
         info = {
