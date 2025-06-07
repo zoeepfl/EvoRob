@@ -61,6 +61,10 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         self._forward_reward_weight = forward_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
         self._cfrc_cost_weight = cfrc_cost_weight
+        self.prev_xpos = None
+        self.no_progress_counter = 0
+        self.min_movement_threshold = 0.01  # tolérance de déplacement
+        self.patience_steps = 20           # nombre de pas avant abandon
 
         self._main_body = main_body
 
@@ -133,15 +137,34 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         cfrc_cost = np.linalg.norm( self.data.cfrc_ext[1:])**2 * self._cfrc_cost_weight
 
         # Reward Yaw
-        quat = self.data.body(self._main_body).xquat
+        # quat = self.data.body(self._main_body).xquat
         # Convert quaternion to yaw (heading in radians)
-        yaw_rad = np.arctan2(
-            2.0 * (quat[0] * quat[3] + quat[1] * quat[2]),
-            1.0 - 2.0 * (quat[2] ** 2 + quat[3] ** 2)
-        )
-        yaw = np.degrees(yaw_rad)
+        # yaw_rad = np.arctan2(
+        #     2.0 * (quat[0] * quat[3] + quat[1] * quat[2]),
+        #     1.0 - 2.0 * (quat[2] ** 2 + quat[3] ** 2)
+        # )
+        import math
+
+        def quaternion_to_yaw_deg(quat):
+            """
+            Convert quaternion (x, y, z, w) to yaw angle in degrees.
+            """
+            x, y, z, w = quat
+            siny_cosp = 2.0 * (w * z + x * y)
+            cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+            yaw_rad = math.atan2(siny_cosp, cosy_cosp)
+            return math.degrees(yaw_rad)
+        
+        # Reward Yaw (orientation vers l’axe x)
+        quat = self.data.body(self._main_body).xquat  # x, y, z, w
+        yaw_deg = quaternion_to_yaw_deg(quat)
+        reward_yaw = (math.exp(-(abs(yaw_deg) / 10.0)**2))
+        # print("Yaw (deg):", yaw_deg, "| Reward:", reward_yaw)
+        # print("x_velocity (m):", x_velocity, "| forward_reward:", forward_reward)
+
+        # yaw = np.degrees(yaw_rad)
         # print("yaw : ", yaw)
-        reward_yaw = np.exp(-(yaw**2)/10)
+        # reward_yaw = np.exp(-(yaw**2)/10)
         # print("yaw : ", yaw)
 
         # Y penalty reward (Y close to 0)
@@ -183,6 +206,26 @@ class AntCustomEnv(MujocoEnv, utils.EzPickle):
         if np.isinf(observation).any():
             print("infini")
             terminated = True
+
+        # Track forward movement
+        xpos_now = self.data.qpos[0]  # Position en X actuelle
+        
+        if self.prev_xpos is None:
+            self.prev_xpos = xpos_now
+        
+        movement = np.abs(xpos_now - self.prev_xpos)
+        
+        if movement < self.min_movement_threshold:
+            self.no_progress_counter += 1
+        else:
+            self.no_progress_counter = 0
+        
+        self.prev_xpos = xpos_now
+        
+        if self.no_progress_counter >= self.patience_steps:
+            # print(f"Terminated due to no forward progress for {self.patience_steps} steps")
+            terminated = True
+
 
         from scipy.spatial.transform import Rotation as R
         quat_mujoco = self.data.qpos[3:7]  # [w, x, y, z] format MuJoCo

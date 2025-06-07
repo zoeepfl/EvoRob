@@ -28,11 +28,78 @@ import matplotlib.pyplot as plt
 
 ROOT_DIR = get_project_root()
 ENV_NAME = 'Ant_custom'
+ROOT_EXT='/run/media/epuck/Tifaine Mez/EvoRobot_ results/'
 
 
 
+# def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.2, max_size=2, seed=None):
+#     if seed is not None:
+#         random.seed(seed)
+#     if n_rocks is None:
+#         n_rocks = random.randint(200, 400)
 
-def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.2, max_size=2, seed=None):
+#     mjcf = Element("mujoco", model="tensegrity default scene")
+
+#     # Header settings
+#     SubElement(mjcf, "compiler", angle="degree", coordinate="local", inertiafromgeom="true", autolimits="true")
+#     SubElement(mjcf, "option", integrator="RK4", timestep="0.01", gravity="0 0 -9.81")
+#     SubElement(mjcf, "statistic", center="0 0 .3", extent=str(area_size))
+
+#     # Visual section (as in walker_world)
+#     visual = SubElement(mjcf, "visual")
+#     SubElement(visual, "headlight", diffuse="0.6 0.6 0.6", ambient="0.3 0.3 0.3", specular="0 0 0")
+#     SubElement(visual, "rgba", haze="0.15 0.25 0.35 1")
+#     SubElement(visual, "global", azimuth="120", elevation="-20")
+
+#     # Assets
+#     asset = SubElement(mjcf, "asset")
+#     SubElement(asset, "texture", type="skybox", builtin="gradient", rgb1="0.3 0.5 0.7", rgb2="0 0 0", width="512", height="3072")
+#     SubElement(asset, "texture", type="2d", name="groundplane", builtin="checker", mark="edge",
+#                rgb1="0.2 0.3 0.4", rgb2="0.1 0.2 0.3", markrgb="0.8 0.8 0.8", width="300", height="300")
+#     SubElement(asset, "material", name="groundplane", texture="groundplane", texuniform="true", texrepeat="5 5", reflectance="0.2")
+#     SubElement(asset, "material", name="rock", rgba="0.4 0.3 0.2 1")
+
+#     # World body
+#     worldbody = SubElement(mjcf, "worldbody")
+#     SubElement(worldbody, "light", pos="2.5 0 3", dir="0 0 -1", directional="false")
+#     SubElement(worldbody, "geom", name="floor", size="0 0 0.05", type="plane",
+#                material="groundplane", friction="150 150 150")
+
+#     # Generate rocks
+#     i = 0
+#     attempts = 0
+#     max_attempts = n_rocks * 3  # pour éviter boucle infinie si area trop petit
+#     while i < n_rocks and attempts < max_attempts:
+#         sx, sy, sz = [round(random.uniform(min_size, max_size), 3) for _ in range(3)]
+#         x, y = [round(random.uniform(-area_size, area_size), 2) for _ in range(2)]
+#         z = sz
+#         distance = (x**2 + y**2)**0.5
+#         if distance < 1.0:  # zone sans cailloux autour du robot
+#             attempts += 1
+#             continue
+
+#         SubElement(worldbody, "geom", name=f"rock_{i}", type="ellipsoid",
+#                    size=f"{sx} {sy} {sz}",
+#                    pos=f"{x} {y} {z}",
+#                    material="rock",
+#                    contype="1", conaffinity="1", condim="3", density="500", friction="1 0.5 0.5")
+#         i += 1
+#         attempts += 1
+
+#     # Pretty print
+#     pretty_xml = minidom.parseString(tostring(mjcf, encoding="unicode")).toprettyxml(indent="  ")
+#     with open(file_path, "w") as f:
+#         f.write(pretty_xml)
+
+
+import random
+import xml.dom.minidom as minidom
+from xml.etree.ElementTree import Element, SubElement, tostring
+
+def generate_random_ant_world(file_path, n_rocks=None, area_size=20,
+                               min_size=0.2, max_size=2, seed=None,
+                               n_bumps=300, bump_min_height=0.002, bump_max_height=0.05,
+                               bump_max_tilt=3.0):
     if seed is not None:
         random.seed(seed)
     if n_rocks is None:
@@ -45,7 +112,7 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.
     SubElement(mjcf, "option", integrator="RK4", timestep="0.01", gravity="0 0 -9.81")
     SubElement(mjcf, "statistic", center="0 0 .3", extent=str(area_size))
 
-    # Visual section (as in walker_world)
+    # Visual section
     visual = SubElement(mjcf, "visual")
     SubElement(visual, "headlight", diffuse="0.6 0.6 0.6", ambient="0.3 0.3 0.3", specular="0 0 0")
     SubElement(visual, "rgba", haze="0.15 0.25 0.35 1")
@@ -53,43 +120,49 @@ def generate_random_ant_world(file_path, n_rocks=None, area_size=20, min_size=0.
 
     # Assets
     asset = SubElement(mjcf, "asset")
-    SubElement(asset, "texture", type="skybox", builtin="gradient", rgb1="0.3 0.5 0.7", rgb2="0 0 0", width="512", height="3072")
-    SubElement(asset, "texture", type="2d", name="groundplane", builtin="checker", mark="edge",
-               rgb1="0.2 0.3 0.4", rgb2="0.1 0.2 0.3", markrgb="0.8 0.8 0.8", width="300", height="300")
-    SubElement(asset, "material", name="groundplane", texture="groundplane", texuniform="true", texrepeat="5 5", reflectance="0.2")
+    SubElement(asset, "texture", builtin="gradient", height="100", rgb1="1 1 1", rgb2="0 0 0", type="skybox", width="100")
+    SubElement(asset, "texture", builtin="flat", height="1278", mark="cross", markrgb="1 1 1",
+               name="texgeom", random="0.01", rgb1="0.8 0.6 0.4", rgb2="0.8 0.6 0.4", type="cube", width="127")
+    SubElement(asset, "texture", builtin="checker", height="100", name="texplane", rgb1="0 0 0", rgb2="0.8 0.8 0.8",
+               type="2d", width="100")
+    SubElement(asset, "material", name="MatPlane", reflectance="0.5", shininess="1", specular="1",
+               texrepeat="60 60", texture="texplane")
+    SubElement(asset, "material", name="geom", texture="texgeom", texuniform="true")
     SubElement(asset, "material", name="rock", rgba="0.4 0.3 0.2 1")
+    SubElement(asset, "material", name="bump", rgba="0.5 0.5 0.5 1")
 
     # World body
     worldbody = SubElement(mjcf, "worldbody")
     SubElement(worldbody, "light", pos="2.5 0 3", dir="0 0 -1", directional="false")
-    SubElement(worldbody, "geom", name="floor", size="0 0 0.05", type="plane",
-               material="groundplane", friction="150 150 150")
+    SubElement(worldbody, "geom", name="floor", size="40 40 0.05", type="plane",
+               material="MatPlane", friction="150 150 150")
 
-    # Generate rocks
-    i = 0
-    attempts = 0
-    max_attempts = n_rocks * 3  # pour éviter boucle infinie si area trop petit
-    while i < n_rocks and attempts < max_attempts:
-        sx, sy, sz = [round(random.uniform(min_size, max_size), 3) for _ in range(3)]
-        x, y = [round(random.uniform(-area_size, area_size), 2) for _ in range(2)]
-        z = sz
-        distance = (x**2 + y**2)**0.5
-        if distance < 1.0:  # zone sans cailloux autour du robot
-            attempts += 1
+    # Bumps / Slopes
+    for i in range(n_bumps):
+        x = round(random.uniform(-area_size, area_size), 2)
+        y = round(random.uniform(-area_size, area_size), 2)
+        if (x**2 + y**2)**0.5 < 1.0:
             continue
 
-        SubElement(worldbody, "geom", name=f"rock_{i}", type="ellipsoid",
-                   size=f"{sx} {sy} {sz}",
-                   pos=f"{x} {y} {z}",
-                   material="rock",
-                   contype="1", conaffinity="1", condim="3", density="500", friction="1 0.5 0.5")
-        i += 1
-        attempts += 1
+        size_x = round(random.uniform(0.4, 1.2), 2)
+        size_y = round(random.uniform(0.4, 1.2), 2)
+        size_z = round(random.uniform(bump_min_height, bump_max_height), 3)
+
+        tilt_x = round(random.uniform(-bump_max_tilt, bump_max_tilt), 2)
+        tilt_y = round(random.uniform(-bump_max_tilt, bump_max_tilt), 2)
+        euler = f"{tilt_x} {tilt_y} 0"
+
+        SubElement(worldbody, "geom", name=f"slope_{i}", type="box",
+                   size=f"{size_x} {size_y} {size_z}",
+                   pos=f"{x} {y} {size_z}",
+                   material="bump", euler=euler, condim="3",
+                   contype="1", conaffinity="1", friction="1.0 0.005 0.0001")
 
     # Pretty print
     pretty_xml = minidom.parseString(tostring(mjcf, encoding="unicode")).toprettyxml(indent="  ")
     with open(file_path, "w") as f:
         f.write(pretty_xml)
+
 
 
 class AntWorld(World):
@@ -98,7 +171,7 @@ class AntWorld(World):
         state_space = 27  # https://gymnasium.farama.org/environments/mujoco/ant/#observation-space
 
         self.n_repeats = 1
-        self.n_steps = 5000 
+        self.n_steps = 500
         self.controller = MLP.NN_najaroController(state_space, action_space)
         self.n_weights = self.controller.n_params
         print("Number of controller weights:", self.n_weights)
@@ -328,18 +401,19 @@ def run_EA_single(ea_single, world):
         start_gen = 0
     else:
         print(f"Continuing evolution from generation {ea_single.current_gen}.")
-        start_gen = ea_single.current_gen + 1  # On continue après le checkpoint
-
+        ea_single.current_gen+=1
+        start_gen = ea_single.current_gen  # On continue après le checkpoint
+        
     for gen in range(start_gen, ea_single.n_gen):
         print(f"Generation {gen}")
         # % Defining the Robot environment in MuJoCo
-        # generate_random_ant_world(
-        #     file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
-        #     n_rocks=500,  # ou fixe : n_rocks=50
-        #     area_size=20,
-        #     min_size=0.005,
-        #     max_size=0.4
-        # )
+        generate_random_ant_world(
+            file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
+            n_rocks=500,  # ou fixe : n_rocks=50
+            area_size=20,
+            min_size=0.005,
+            max_size=0.4
+        )
         pop = ea_single.ask()
         fitnesses_gen = np.empty(len(pop))
         reward_forward = np.empty(len(pop))
@@ -392,7 +466,7 @@ def generate_best_individual_video(world, video_name: str = 'EvoRob5_video.mp4')
 
     observations, info = env.reset()
     frames = []
-    for step in range(1000):
+    for step in range(500):
         frames.append(env.render())
         action = world.controller.get_action(observations)
         observations, rewards, terminated, truncated, info = env.step(action)
@@ -443,26 +517,33 @@ def visualise_individual(genotype):
     env.close()
     print("Reward total:", np.sum(rewards_list))
 
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+from datetime import datetime
+
+def get_timestamped_output_dir(base_name):
+    """
+    Crée un nom de dossier à partir de base_name et de la date/heure actuelle.
+    """
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    dir_name = f"{base_name}_{timestamp}"
+    output_dir = os.path.join(ROOT_EXT, 'reward_data', dir_name)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
 
 def plot_rewards(value, title, ax=None, save_path='fitness_plot.png', data_path='full_fitness_max.csv'):
     """
-    Plot the rewards over generations with lines and points, and save the plot, the data, and the figure object.
+    Plot the rewards over generations, and save plot/image/CSV/figure in a timestamped folder.
     """
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import os
-    import pickle
+    base_name = os.path.splitext(save_path)[0]
+    output_dir = get_timestamped_output_dir(base_name)
 
-    # ✅ Créer le dossier reward_data s'il n'existe pas
-    output_dir = 'reward_data'
-    os.makedirs(output_dir, exist_ok=True)
-
-    # ✅ Mettre à jour les chemins avec le dossier
     save_path = os.path.join(output_dir, save_path)
     data_path = os.path.join(output_dir, data_path)
-    fig_path = os.path.splitext(save_path)[0] + '.pkl'  # même nom que l'image, extension .pkl
+    fig_path = os.path.join(output_dir, base_name + '.pkl')
 
-    # ✅ Création de la figure si besoin
     if ax is None:
         fig, ax = plt.subplots()
     else:
@@ -470,50 +551,33 @@ def plot_rewards(value, title, ax=None, save_path='fitness_plot.png', data_path=
 
     generations = range(len(value))
     ax.plot(generations, value, label='Fitness', marker='o', linestyle='-', color='blue')
-
     ax.set_xlabel('Generation')
     ax.set_ylabel('Reward')
     ax.set_title(title)
     ax.legend()
 
-    # ✅ Sauvegarder le graphique en image
     plt.savefig(save_path)
     print(f"Plot saved to {save_path}")
 
-    # ✅ Sauvegarder les données en CSV
     np.savetxt(data_path, value, delimiter=',')
     print(f"Fitness data saved to {data_path}")
 
-    # ✅ Sauvegarder la figure complète en .pkl
     with open(fig_path, 'wb') as f:
         pickle.dump(fig, f)
     print(f"Figure object saved to {fig_path}")
 
     plt.show()
 
-
 def plot_all_rewards(reward_dict, title, save_path='combined_fitness_plot.png'):
     """
-    Plot multiple reward curves on the same plot and save both as image and pickled figure.
-
-    Parameters:
-        reward_dict (dict): Dictionary with title as key and list/array as value.
-        save_path (str): Name of the file to save the plot image.
+    Plot multiple reward curves and save all outputs in a timestamped folder.
     """
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import os
-    import pickle
+    base_name = os.path.splitext(save_path)[0]
+    output_dir = get_timestamped_output_dir(base_name)
 
-    # ✅ Créer le dossier reward_data s'il n'existe pas
-    output_dir = 'reward_data'
-    os.makedirs(output_dir, exist_ok=True)
-
-    # ✅ Définir les chemins complets
     image_path = os.path.join(output_dir, save_path)
-    fig_path = os.path.join(output_dir, os.path.splitext(save_path)[0] + '.pkl')
+    fig_path = os.path.join(output_dir, base_name + '.pkl')
 
-    # ✅ Création du plot
     fig, ax = plt.subplots()
 
     for label, values in reward_dict.items():
@@ -526,23 +590,21 @@ def plot_all_rewards(reward_dict, title, save_path='combined_fitness_plot.png'):
     ax.legend()
     ax.grid(True)
 
-    # ✅ Sauvegarder le plot en image
     plt.savefig(image_path)
+    print(f"Combined plot saved to {image_path}")
 
-    # ✅ Sauvegarder la figure en objet pickle
     with open(fig_path, 'wb') as f:
         pickle.dump(fig, f)
-
-    print(f"Combined plot saved to {image_path}")
     print(f"Figure object saved to {fig_path}")
 
     plt.show()
 
+
 def main():
     # %% Understanding the world
-    for i in range(8):
-        genotype = np.random.uniform(-1, 1, 1676)  # 8 body parameters, 945 NN weights
-        visualise_individual(genotype)
+    # for i in range(8):
+    #     genotype = np.random.uniform(-1, 1, 1676)  # 8 body parameters, 945 NN weights
+    #     visualise_individual(genotype)
     world = AntWorld()
 
     n_parameters = world.n_params
@@ -551,32 +613,35 @@ def main():
     ########ES#########
     ES_opts["min"] = -1
     ES_opts["max"] = 1
-    ES_opts["num_parents"] = 20
-    ES_opts["num_generations"] = 20
+    ES_opts["num_parents"] = 30
+    ES_opts["num_generations"] = 150
     ES_opts["mutation_sigma"] = 0.33
     ES_opts["sigma_limit"] = 0.1
 
-    results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single_es')
+    #results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single_es')
+    results_dir = os.path.join(ROOT_EXT,'single_es')
+
 
     ##decommenter pour lancer un nouveau run sans checkpoint
-    es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
+    #es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
 
 
 
     #decomenter pour charger un checkpoint
-    # try:
-    #     es_single = ES.load_checkpoint(results_dir, gen_id=4)
-    #     es_single.n_pop = population_size
-    #     es_single.n_params = n_parameters
-    #     es_single.n_gen = ES_opts["num_generations"]
-    #     es_single.n_parents = ES_opts["num_parents"]
-    #     es_single.current_sigma = ES_opts["mutation_sigma"]
-    #     es_single.sigma_limit = ES_opts["sigma_limit"]
-    #     es_single.min = ES_opts["min"]
-    #     es_single.max = ES_opts["max"]
-    #     print(f"Checkpoint chargé depuis génération {es_single.current_gen}")
-    # except ...:
-    #     es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
+    try:
+        es_single = ES.load_checkpoint(results_dir,gen_id=133)
+        es_single.n_pop = population_size
+        es_single.n_params = n_parameters
+        es_single.n_gen = ES_opts["num_generations"]
+        es_single.n_parents = ES_opts["num_parents"]
+        es_single.current_sigma = ES_opts["mutation_sigma"]
+        es_single.sigma_limit = ES_opts["sigma_limit"]
+        es_single.min = ES_opts["min"]
+        es_single.max = ES_opts["max"]
+        es_single.directory_name=results_dir
+        print(f"Checkpoint chargé depuis génération {es_single.current_gen}")
+    except ...:
+        es_single = ES(population_size, n_parameters, ES_opts, output_dir=results_dir)
 
 
     run_EA_single(es_single, world)
@@ -584,16 +649,16 @@ def main():
 
 
 
-    #######CMAES################
-    CMAES_opts["min"] = -1
-    CMAES_opts["max"] = 1
-    CMAES_opts["num_parents"] = 20
-    CMAES_opts["num_generations"] = 5
-    CMAES_opts["mutation_sigma"] = 0.33
+    # #######CMAES################
+    # CMAES_opts["min"] = -1
+    # CMAES_opts["max"] = 1
+    # CMAES_opts["num_parents"] = 20
+    # CMAES_opts["num_generations"] = 5
+    # CMAES_opts["mutation_sigma"] = 0.33
 
-    #results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
+    # #results_dir = os.path.join(ROOT_DIR, 'results', ENV_NAME, 'single')
 
-    ea_single = CMAES_sol(population_size, n_parameters, CMAES_opts, results_dir)
+    # ea_single = CMAES_sol(population_size, n_parameters, CMAES_opts, results_dir)
 
     #Vérifie si un checkpoint existe
     # try:
@@ -640,8 +705,8 @@ def main():
     plot_rewards(es_single.full_drift_fitness, 'ES Drift Fitness (penalty)', save_path='es_fitness_drift_plot.png', data_path='es_full_drift_fitness.csv')
     plot_rewards(es_single.full_ctrl_cost_fitness, 'ES Ctrl Fitness', save_path='es_fitness_ctrl_plot.png', data_path='es_full_ctrl_fitness.csv')
     plot_rewards(es_single.full_cfrc_cost_fitness, 'ES Cfrc Fitness', save_path='es_fitness_cfrc_plot.png', data_path='es_full_cfrc_fitness.csv')
-    plot_rewards(es_single.full_best_so_far, title='ES Best Fitness Over Generations', save_path='es_best_fitness_plot.png', data_path='es_full_best_so_far.csv')
-    plot_rewards(es_single.full_fitness_mean, title='ES Mean Fitness Over Generations', save_path='es_mean_fitness_plot.png', data_path='es_full_fitness_mean.csv')
+    plot_rewards(es_single.full_best_so_far, title='ES Best Fitness Over Generations_100+25+25gen_sigma0.33_parent30', save_path='es_best_fitness_plot_100+25+25gen_sigma0.33_parent30.png', data_path='es_full_best_so_far_100+25+25gen_sigma0.33_parent30.csv')
+    plot_rewards(es_single.full_fitness_mean, title='ES Mean Fitness Over Generations_100+25+25gen_sigma0.33_parent30', save_path='es_mean_fitness_plot_100+25+25gen_sigma0.33_parent30.png', data_path='es_full_fitness_mean_100+25+25gen_sigma0.33_parent30.csv')
 
     plot_all_rewards({
         'ES Full fitness': es_single.full_fitness_max,
@@ -655,7 +720,7 @@ def main():
     plot_all_rewards({
         'ES Best fitness': es_single.full_best_so_far,
         'ES Mean fitness': es_single.full_fitness_mean
-    }, 'ES Best and Mean Fitness Over Generations initialisation ', save_path='es_best_and_mean_plot.png')
+    }, 'ES Best and Mean Fitness Over Generations initialisation_100+25+25gen_sigma0.33_parent30', save_path='es_best_and_mean_plot_100+25+25gen_sigma0.33_parent30.png')
 
     # %% Optimise multi-objective
     # # TODO implement the NSGAII
@@ -675,25 +740,33 @@ def main():
 # 
     # # run_EA_multi(ea_multi_obj, world)
 
+    # generate_random_ant_world(
+    #         file_path=os.path.join(ROOT_DIR, "src", "world", "robot", "assets", "ant_world.xml"),
+    #         #n_rocks=900,  # ou fixe : n_rocks=50
+    #         #area_size=15,
+    #         #min_size=0.005,
+    #         #max_size=0.1
+    #     )
+
     # %% visualise
     # TODO: Make a video of the best individual, and plot the fitness curve.
-    best_individual = np.load(os.path.join(results_dir, "4", "x_best.npy"))
+    # best_individual = np.load(os.path.join(results_dir, "124", "x_best.npy"))
 
-    points, connectivity_mat = world.geno2pheno(best_individual)
-    robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)
-    robot.xml = robot.define_robot()
-    robot.write_xml()
+    # points, connectivity_mat = world.geno2pheno(best_individual)
+    # robot = AntRobot(points, connectivity_mat, world.joint_limits, world.joint_axis, verbose=False)
+    # robot.xml = robot.define_robot()
+    # robot.write_xml()
 
-    # % Defining the Robot environment in MuJoCo
-    world_xml = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
-    robot_env = world_xml.getroot()
+    # # % Defining the Robot environment in MuJoCo
+    # world_xml = xml.parse(os.path.join(ROOT_DIR, 'src', 'world', 'robot', 'assets', "ant_world.xml"))
+    # robot_env = world_xml.getroot()
 
-    robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
-    world_xml = xml.tostring(robot_env, encoding='unicode')
-    with open(world.world_file, "w") as f:
-        f.write(world_xml)
+    # robot_env.append(xml.Element("include", attrib={"file": "AntRobot.xml"}))
+    # world_xml = xml.tostring(robot_env, encoding='unicode')
+    # with open(world.world_file, "w") as f:
+    #     f.write(world_xml)
 
-    generate_best_individual_video(world,'test_4.mp4')
+    # generate_best_individual_video(world,'evo_100gen_v3.mp4')
 
 
 if __name__ == "__main__":
